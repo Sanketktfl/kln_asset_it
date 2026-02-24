@@ -2,48 +2,38 @@ import React from "react";
 import AssetRow from "./AssetRow";
 
 const AssetTable = ({ assets }) => {
+  if (assets.length === 0) {
+    return (
+      <div className="bg-white p-10 rounded-lg shadow text-center text-gray-500">
+        No assets found.
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200">
+    <div className="bg-white shadow-lg rounded-xl overflow-hidden border">
 
-      <div className="px-6 py-4 border-b bg-gray-50 rounded-t-xl">
-        <h3 className="text-lg font-semibold text-gray-700">
-          Asset Records
-        </h3>
-      </div>
+      <table className="min-w-full text-sm text-left">
 
-      <div className="overflow-x-auto">
+        <thead className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs uppercase tracking-wider">
+          <tr>
+            <th className="p-4">Object ID</th>
+            <th className="p-4">Plant</th>
+            <th className="p-4">Location</th>
+            <th className="p-4">Custodian</th>
+          </tr>
+        </thead>
 
-        <table className="min-w-full text-sm">
+        <tbody className="divide-y">
+          {assets.map((asset) => (
+            <AssetRow
+              key={asset.cdb_object_id}
+              asset={asset}
+            />
+          ))}
+        </tbody>
 
-          <thead className="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
-            <tr>
-              <th className="p-4 text-left">Asset Tag</th>
-              <th className="p-4 text-left">RFID</th>
-              <th className="p-4 text-left">Asset No</th>
-              <th className="p-4 text-left">Model</th>
-              <th className="p-4 text-left">Serial</th>
-              <th className="p-4 text-left">Plant</th>
-              <th className="p-4 text-left">Location</th>
-              <th className="p-4 text-left">Custodian</th>
-              <th className="p-4 text-left">Year</th>
-              <th className="p-4 text-left">Verified</th>
-              <th className="p-4 text-left">Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {assets.map((asset, index) => (
-              <AssetRow
-                key={index}
-                asset={asset}
-                index={index}
-              />
-            ))}
-          </tbody>
-
-        </table>
-
-      </div>
+      </table>
 
     </div>
   );

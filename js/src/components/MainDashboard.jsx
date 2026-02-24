@@ -1,38 +1,5 @@
 import React, { useState } from "react";
 
-/* ─── DATA ───────────────────────────────────────────────── */
-const dummyAssets = [
-  {
-    assetTagNo: "171880", rfidNo: "E2806995000060036080B4CB", assetNo: "80001381",
-    modelNo: "LATITUDE 3420", serialNo: "N3PFID012", plant: "Mundhwa",
-    location: "AP-81", custodian: "Ketan Mankar", mfgYear: "2022",
-    verifiedDate: "21.01.2025", assetStatus: "Working"
-  },
-  {
-    assetTagNo: "171881", rfidNo: "E2806995000060036080B4CC", assetNo: "80001382",
-    modelNo: "LATITUDE 5420", serialNo: "N3PFID013", plant: "Mundhwa",
-    location: "AP-82", custodian: "Ramesh Kumar", mfgYear: "2021",
-    verifiedDate: "15.02.2025", assetStatus: "Idle"
-  },
-  {
-    assetTagNo: "171882", rfidNo: "E2806995000060036080B4CD", assetNo: "80001383",
-    modelNo: "OPTIPLEX 7090", serialNo: "N3PFID014", plant: "Baramati",
-    location: "BM-14", custodian: "Suresh Patil", mfgYear: "2023",
-    verifiedDate: "10.03.2025", assetStatus: "Under Utilise"
-  },
-  {
-    assetTagNo: "171883", rfidNo: "E2806995000060036080B4CE", assetNo: "80001384",
-    modelNo: "LATITUDE 3420", serialNo: "N3PFID015", plant: "R1",
-    location: "R1-07", custodian: "Priya Nair", mfgYear: "2022",
-    verifiedDate: "22.01.2025", assetStatus: "Working"
-  },
-  {
-    assetTagNo: "171884", rfidNo: "", assetNo: "80001385",
-    modelNo: "INSPIRON 15", serialNo: "N3PFID016", plant: "R2",
-    location: "R2-03", custodian: "Amit Sharma", mfgYear: "2020",
-    verifiedDate: "", assetStatus: "Idle"
-  },
-];
 
 /* ─── CONFIG ─────────────────────────────────────────────── */
 const STATUS_CONFIG = {
@@ -257,28 +224,63 @@ const AssetRow = ({ asset, index }) => {
 
 /* ─── MAIN DASHBOARD ─────────────────────────────────────── */
 export default function MainDashboard() {
-  const [search, setSearch]           = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [plantFilter, setPlantFilter]  = useState("All");
 
-  const plants   = ["All", ...Array.from(new Set(dummyAssets.map(a => a.plant)))];
+  const [assets, setAssets] = useState([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [plantFilter, setPlantFilter] = useState("All");
+
+  // 🔥 Fetch real data
+  React.useEffect(() => {
+    fetch("http://localhost:8080/api/v1/collection/kln_asset_master")
+      .then(res => res.json())
+      .then(data => {
+
+        const formatted = (data.objects || []).map(item => ({
+          assetTagNo: item.barcode_no,
+          rfidNo: item.rfid_no,
+          assetNo: item.asset_no,
+          modelNo: item.model_no,
+          serialNo: item.serial_no,
+          plant: item.plant,
+          location: item.location,
+          custodian: item.custodian,
+          mfgYear: item.mfg_year,
+          verifiedDate: item.verified_status
+            ? new Date(item.verified_status)
+                .toLocaleDateString("en-GB")
+                .replace(/\//g, ".")
+            : "",
+          assetStatus: item.asset_status
+        }));
+
+        setAssets(formatted);
+      })
+      .catch(err => {
+        console.error("API Error:", err);
+      });
+  }, []);
+
+  // 🔥 Use real assets
+  const plants = ["All", ...Array.from(new Set(assets.map(a => a.plant)))];
   const statuses = ["All", "Working", "Under Utilise", "Idle"];
 
-  const filtered = dummyAssets.filter(a => {
-    const matchSearch = Object.values(a).some(v => String(v).toLowerCase().includes(search.toLowerCase()));
+  const filtered = assets.filter(a => {
+    const matchSearch = Object.values(a).some(v =>
+      String(v).toLowerCase().includes(search.toLowerCase())
+    );
     const matchStatus = statusFilter === "All" || a.assetStatus === statusFilter;
-    const matchPlant  = plantFilter  === "All" || a.plant === plantFilter;
+    const matchPlant  = plantFilter === "All" || a.plant === plantFilter;
     return matchSearch && matchStatus && matchPlant;
   });
 
   const counts = {
-    total:        dummyAssets.length,
-    working:      dummyAssets.filter(a => a.assetStatus === "Working").length,
-    underUtilise: dummyAssets.filter(a => a.assetStatus === "Under Utilise").length,
-    idle:         dummyAssets.filter(a => a.assetStatus === "Idle").length,
-    scanned:      dummyAssets.filter(a => a.rfidNo).length,
+    total: assets.length,
+    working: assets.filter(a => a.assetStatus === "Working").length,
+    underUtilise: assets.filter(a => a.assetStatus === "Under Utilise").length,
+    idle: assets.filter(a => a.assetStatus === "Idle").length,
+    scanned: assets.filter(a => a.rfidNo).length,
   };
-
   const selectStyle = {
     padding: "clamp(4px, 0.5vh, 8px) clamp(8px, 0.8vw, 14px)",
     borderRadius: "clamp(6px, 0.6vw, 10px)",
@@ -328,7 +330,7 @@ export default function MainDashboard() {
           padding: "clamp(4px, 0.4vh, 7px) clamp(10px, 1vw, 16px)",
           color: "white", fontSize: "clamp(9px, 0.75vw, 12px)", fontWeight: "600"
         }}>
-          Asset Module
+          New Assets
         </div>
       </div>
 
@@ -339,14 +341,52 @@ export default function MainDashboard() {
       }}>
 
         {/* Page title */}
-        <div style={{ marginBottom: "clamp(12px, 1.6vh, 22px)" }}>
-          <h2 style={{ margin: 0, fontSize: "clamp(15px, 1.5vw, 22px)", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.4px" }}>
-            Asset Registry
-          </h2>
-          <p style={{ margin: "3px 0 0", fontSize: "clamp(9px, 0.75vw, 12px)", color: "#94a3b8", fontWeight: "500" }}>
-            Track and manage all RFID-tagged assets across plants &nbsp;·&nbsp;
-            <span style={{ color: "#ef4444" }}>*</span> Mandatory fields
-          </p>
+        <div style={{
+          marginBottom: "clamp(12px, 1.6vh, 22px)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: "clamp(6px, 0.6vw, 10px)"
+        }}>
+
+          <div>
+            <h2 style={{
+              margin: 0,
+              fontSize: "clamp(15px, 1.5vw, 22px)",
+              fontWeight: "800",
+              color: "#0f172a",
+              letterSpacing: "-0.4px"
+            }}>
+              Asset Registry
+            </h2>
+
+            <p style={{
+              margin: "3px 0 0",
+              fontSize: "clamp(9px, 0.75vw, 12px)",
+              color: "#94a3b8",
+              fontWeight: "500"
+            }}>
+              Track and manage all RFID-tagged assets across plants
+            </p>
+          </div>
+
+          {/* 🔥 Mandatory label on right */}
+          <div style={{
+            background: "#fee2e2",
+            color: "#b91c1c",
+            padding: "clamp(4px, 0.4vh, 7px) clamp(8px, 0.8vw, 14px)",
+            borderRadius: "clamp(6px, 0.6vw, 10px)",
+            fontSize: "clamp(9px, 0.75vw, 12px)",
+            fontWeight: "700",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            border: "1px solid #fecaca"
+          }}>
+            <span>*</span> Mandatory Fields
+          </div>
+
         </div>
 
         {/* Stat cards */}
@@ -468,7 +508,7 @@ export default function MainDashboard() {
             gap: "clamp(6px, 0.6vw, 10px)"
           }}>
             <span style={{ fontSize: "clamp(9px, 0.7vw, 12px)", color: "#94a3b8", fontWeight: "500" }}>
-              Showing {filtered.length} of {dummyAssets.length} assets
+              Showing {filtered.length} of {assets.length} assets
             </span>
             <div style={{ display: "flex", gap: "clamp(4px, 0.5vw, 8px)", flexWrap: "wrap" }}>
               {["Working","Under Utilise","Idle"].map(s => {
@@ -480,7 +520,7 @@ export default function MainDashboard() {
                     borderRadius: "clamp(8px, 0.8vw, 14px)",
                     background: cfg.bg, color: cfg.color, fontWeight: "700"
                   }}>
-                    {dummyAssets.filter(a => a.assetStatus === s).length} {s}
+                    {assets.filter(a => a.assetStatus === s).length} {s}
                   </span>
                 );
               })}

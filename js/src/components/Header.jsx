@@ -2,21 +2,13 @@ import React from "react";
 
 const Header = () => {
   return (
-    <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-8 py-5 shadow-lg flex items-center justify-between">
-
-      <div>
-        <h1 className="text-2xl font-bold tracking-wide">
-          Asset Management Dashboard
-        </h1>
-        <p className="text-blue-100 text-sm">
-          Track and manage your IT assets efficiently
-        </p>
-      </div>
-
-      <div className="bg-white/20 px-4 py-2 rounded-lg text-sm">
-        Asset Module
-      </div>
-
+    <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-8 py-5 shadow-lg">
+      <h1 className="text-3xl font-bold tracking-wide">
+        Asset Management Dashboard
+      </h1>
+      <p className="text-sm opacity-80 mt-1">
+        CONTACT Elements Asset Master
+      </p>
     </div>
   );
 };
