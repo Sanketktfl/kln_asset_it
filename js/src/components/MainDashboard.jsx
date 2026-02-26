@@ -218,30 +218,6 @@ const EditModal = ({ asset, onClose, onSave, onChange }) => (
       </div>
 
       <div style={{ padding: "22px 26px" }}>
-        {/* Read-only section */}
-        <div style={{
-          background: "#f8fafc", borderRadius: "10px", padding: "14px 16px",
-          marginBottom: "20px", border: "1px solid #f1f5f9"
-        }}>
-          <div style={{ fontSize: "10px", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>
-            🔒 Read-only Information
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            {[
-              ["Asset Tag No.", asset.assetTagNo],
-              ["RFID No.", asset.rfidNo || "—"],
-              ["Asset No.", asset.assetNo || "—"],
-              ["Model No.", asset.modelNo || "—"],
-              ["Serial No.", asset.serialNo || "—"],
-              ["Mfg Year", asset.mfgYear || "—"],
-            ].map(([label, val]) => (
-              <div key={label}>
-                <div style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "600", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.4px" }}>{label}</div>
-                <div style={{ fontSize: "13px", color: "#475569", fontWeight: "600", fontFamily: "monospace" }}>{val}</div>
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Editable section */}
         <div style={{ fontSize: "10px", fontWeight: "800", color: "#6366f1", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>
@@ -249,6 +225,41 @@ const EditModal = ({ asset, onClose, onSave, onChange }) => (
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FormField
+            label="Asset Tag No."
+            value={asset.assetTagNo}
+            onChange={e => onChange({ ...asset, assetTagNo: e.target.value })}
+            required
+          />
+
+          <FormField
+            label="Asset No."
+            value={asset.assetNo}
+            onChange={e => onChange({ ...asset, assetNo: e.target.value })}
+          />
+
+          <FormField
+            label="Model No."
+            value={asset.modelNo}
+            onChange={e => onChange({ ...asset, modelNo: e.target.value })}
+          />
+
+          <FormField
+            label="Serial No."
+            value={asset.serialNo}
+            onChange={e => onChange({ ...asset, serialNo: e.target.value })}
+          />
+
+          <FormField
+            label="Mfg Year"
+            value={asset.mfgYear}
+            onChange={e => onChange({ ...asset, mfgYear: e.target.value })}
+          />
+          <FormField
+            label="RFID No."
+            value={asset.rfidNo}
+            disabled={true}
+          />
           <FormField label="Plant" value={asset.plant} required
             onChange={e => onChange({ ...asset, plant: e.target.value })} />
           <FormField label="Location" value={asset.location}
@@ -257,6 +268,30 @@ const EditModal = ({ asset, onClose, onSave, onChange }) => (
             onChange={e => onChange({ ...asset, custodian: e.target.value })} />
           <FormField label="Verified Date" value={asset.verifiedDate}
             onChange={e => onChange({ ...asset, verifiedDate: e.target.value })} />
+          <FormField label="Comments">
+            <textarea
+              value={asset.comments || ""}
+              onChange={e => onChange({ ...asset, comments: e.target.value })}
+              rows={4}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                boxSizing: "border-box",
+                borderRadius: "10px",
+                fontSize: "13px",
+                color: "#1e293b",
+                border: "1px solid #e2e8f0",
+                background: "white",
+                outline: "none",
+                resize: "vertical",
+                minHeight: "90px",
+                fontFamily: "inherit",
+                lineHeight: "1.5"
+              }}
+              onFocus={e => e.target.style.borderColor = "#6366f1"}
+              onBlur={e => e.target.style.borderColor = "#e2e8f0"}
+            />
+          </FormField>
         </div>
 
         <FormField label="Asset Status" required>
@@ -377,7 +412,7 @@ const DeleteModal = ({ asset, onClose, onConfirm }) => (
 /* ─── TH ─────────────────────────────────────────────────── */
 const TH = ({ children, mandatory }) => (
   <th style={{
-    padding: "10px 14px", textAlign: "left",
+    padding: "9px 12px", textAlign: "left",
     fontSize: "10.5px", fontWeight: "700", color: "#64748b",
     textTransform: "uppercase", letterSpacing: "0.6px",
     whiteSpace: "nowrap", background: "#f8fafc",
@@ -393,7 +428,7 @@ const AssetRow = ({ asset, index, handleEdit, handleDelete }) => {
   const [hovered, setHovered] = useState(false);
   const cell = {
     padding: "10px 14px", verticalAlign: "middle",
-    whiteSpace: "nowrap", borderBottom: "1px solid #f8fafc",
+    borderBottom: "1px solid #f8fafc",
     fontSize: "12.5px"
   };
   return (
@@ -407,7 +442,7 @@ const AssetRow = ({ asset, index, handleEdit, handleDelete }) => {
           {asset.assetTagNo}
         </span>
       </td>
-      <td style={cell}><RfidChip value={asset.rfidNo} /></td>
+      <td style={{ ...cell, maxWidth: "140px" }}><RfidChip value={asset.rfidNo} /></td>
       <td style={{ ...cell, fontFamily: "monospace", color: "#64748b" }}>{asset.assetNo || "—"}</td>
       <td style={{ ...cell, fontWeight: "600", color: "#334155" }}>{asset.modelNo || "—"}</td>
       <td style={{ ...cell, fontFamily: "monospace", color: "#94a3b8", fontSize: "11px" }}>{asset.serialNo || "—"}</td>
@@ -417,6 +452,9 @@ const AssetRow = ({ asset, index, handleEdit, handleDelete }) => {
       <td style={{ ...cell, textAlign: "center", fontWeight: "700", color: "#64748b" }}>{asset.mfgYear || "—"}</td>
       <td style={{ ...cell, color: "#0369a1", fontWeight: "600" }}>{asset.verifiedDate || <span style={{ color: "#cbd5e1", fontStyle: "italic", fontWeight: 400 }}>—</span>}</td>
       <td style={cell}><StatusBadge value={asset.assetStatus} /></td>
+      <td style={{ ...cell, maxWidth: "180px", whiteSpace: "normal", wordBreak: "break-word", color: "#475569" }}>
+  {asset.comments || <span style={{ color: "#e2e8f0" }}>—</span>}
+</td>
       <td style={cell}>
         <div style={{ display: "flex", gap: "6px" }}>
           <button onClick={() => handleEdit(asset)} style={{
@@ -465,20 +503,23 @@ export default function MainDashboard() {
   const handleDeleteClick = (asset) => { setSelectedAsset({ ...asset }); setDeleteModal(true); };
 
 
-
   React.useEffect(() => {
     const fetchScans = async () => {
       try {
-        const res = await fetch("http://localhost:8080/api/v1/collection/kln_asset_scan");
+        const res = await fetch("http://localhost:8080/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 0");
         const data = await res.json();
-        const mapped = (data.objects || []).map(scan => ({
-          scanId: scan["@id"],
-          barcode: scan.barcode,
-          rfid: scan.rfid,
-          department: scan.department,
-          plantCode: scan.plant_code,
-          dateTime: scan.date_time
-        }));
+        const mapped = (data.objects || [])
+          .filter(scan =>
+            !assets.some(a => a.rfidNo === scan.rfid)
+          )
+          .map(scan => ({
+            scanId: scan["@id"],
+            barcode: scan.barcode,
+            rfid: scan.rfid,
+            department: scan.department,
+            plantCode: scan.plant_code,
+            dateTime: scan.date_time
+          }));
         setScannedAssets(mapped);
       } catch (err) {
         console.error("Scan API error:", err);
@@ -499,65 +540,100 @@ export default function MainDashboard() {
         formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
     }
-
-    await fetch(selectedAsset.apiUrl, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        plant: selectedAsset.plant,
-        location: selectedAsset.location,
-        custodian: selectedAsset.custodian,
-        asset_status: selectedAsset.assetStatus,
-        verified_status: formattedDate
-      })
-    });
-
-    // ✅ REMOVE THAT SCAN FROM BADGE LIST
-    setScannedAssets(prev =>
-      prev.filter(s => s.rfid !== selectedAsset.rfidNo)
-    );
-
-    setEditModal(false);
-    setSelectedAsset(null);
-
-    window.location.reload();
+    const payload = {
+      barcode_no: selectedAsset.assetTagNo,
+      rfid_no: selectedAsset.rfidNo,
+      asset_no: selectedAsset.assetNo,
+      model_no: selectedAsset.modelNo,
+      serial_no: selectedAsset.serialNo,
+      plant: selectedAsset.plant,
+      location: selectedAsset.location,
+      custodian: selectedAsset.custodian,
+      mfg_year: parseInt(selectedAsset.mfgYear || 0),
+      verified_status: formattedDate,
+      asset_status: selectedAsset.assetStatus,
+      comments: selectedAsset.comments
+    };
+    try {
+      if (selectedAsset.apiUrl) {
+        // ✅ EXISTING → UPDATE
+        await fetch(selectedAsset.apiUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // ✅ NEW → CREATE
+        await fetch("http://localhost:8080/internal/asset_it_master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      }
+        if (selectedAsset.scanId) {
+          await fetch(selectedAsset.scanId, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_scanned: 1 })
+          });
+        }
+      // Remove from scan badge list
+      setScannedAssets(prev =>
+        prev.filter(s =>
+          String(s.rfid).trim() !== String(selectedAsset.rfidNo).trim()
+        )
+      );
+      setEditModal(false);
+      setSelectedAsset(null);
+      // Refresh master table
+      window.location.reload();
+    } catch (err) {
+      console.error("Save error:", err);
+    }
   };
 
   const openScanForEdit = (scan) => {
 
-  const match = assets.find(a => a.rfidNo === scan.rfid);
+  const match = assets.find(a =>
+    (a.rfidNo && scan.rfid && a.rfidNo.trim() === scan.rfid.trim()) ||
+    (a.assetTagNo && scan.barcode && a.assetTagNo.trim() === scan.barcode.trim()) ||
+    (a.assetNo && scan.barcode && a.assetNo.trim() === scan.barcode.trim()) ||
+    (a.serialNo && scan.barcode && a.serialNo.trim() === scan.barcode.trim())
+  );
 
   let prepared;
 
   if (match) {
-    prepared = {
-      ...match,
-      verifiedDate: scan.dateTime
-        ? new Date(scan.dateTime)
-            .toLocaleDateString("en-GB")
-            .replace(/\//g, ".")
-        : match.verifiedDate
-    };
-  } else {
-    prepared = {
-      apiUrl: null,
-      assetTagNo: scan.barcode,
-      rfidNo: scan.rfid,
-      assetNo: "",
-      modelNo: "",
-      serialNo: "",
-      plant: "",
-      location: "",
-      custodian: "",
-      mfgYear: "",
-      verifiedDate: scan.dateTime
-        ? new Date(scan.dateTime)
-            .toLocaleDateString("en-GB")
-            .replace(/\//g, ".")
-        : "",
-      assetStatus: "Working"
-    };
-  }
+      prepared = {
+        ...match,
+        scanId: scan.scanId,   // 🔥 ADD THIS
+        verifiedDate: scan.dateTime
+          ? new Date(scan.dateTime)
+              .toLocaleDateString("en-GB")
+              .replace(/\//g, ".")
+          : match.verifiedDate
+      };
+    } else {
+      prepared = {
+        scanId: scan.scanId,   // 🔥 ADD THIS
+        apiUrl: null,
+        assetTagNo: scan.barcode,
+        rfidNo: scan.rfid,
+        assetNo: "",
+        modelNo: "",
+        serialNo: "",
+        plant: "",
+        location: "",
+        custodian: "",
+        mfgYear: "",
+        verifiedDate: scan.dateTime
+          ? new Date(scan.dateTime)
+              .toLocaleDateString("en-GB")
+              .replace(/\//g, ".")
+          : "",
+        assetStatus: "Working"
+      };
+    }
 
   setSelectedAsset(prepared);
   setEditModal(true);
@@ -565,29 +641,100 @@ export default function MainDashboard() {
 };
 
   const handleConfirmDelete = async () => {
-    await fetch(selectedAsset.apiUrl, { method: "DELETE" });
-    setDeleteModal(false); setSelectedAsset(null);
+  try {
+    // 1️⃣ Delete from MASTER
+    if (selectedAsset.apiUrl) {
+      await fetch(selectedAsset.apiUrl, { method: "DELETE" });
+    }
+
+    // 2️⃣ Delete from SCAN table using RFID
+    if (selectedAsset.rfidNo) {
+      const scanRes = await fetch(
+        `http://localhost:8080/api/v1/collection/kln_asset_scan?$filter=rfid eq '${selectedAsset.rfidNo}'`
+      );
+
+      const scanData = await scanRes.json();
+
+      if (scanData.objects && scanData.objects.length > 0) {
+        const scanApiUrl = scanData.objects[0]["@id"];
+
+        await fetch(scanApiUrl, {
+          method: "DELETE"
+        });
+      }
+    }
+
+    setDeleteModal(false);
+    setSelectedAsset(null);
+
+    // Auto refresh UI
     window.location.reload();
-  };
+
+  } catch (err) {
+    console.error("Delete error:", err);
+  }
+};
 
   React.useEffect(() => {
-    fetch("http://localhost:8080/api/v1/collection/kln_asset_master")
-      .then(r => r.json())
-      .then(data => {
-        setAssets((data.objects || []).map(item => ({
+  const fetchMatchedAssets = async () => {
+    try {
+      // 1️⃣ Get scanned assets (only unsaved)
+      const scanRes = await fetch(
+        "http://localhost:8080/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 1"
+      );
+      const scanData = await scanRes.json();
+
+      const scannedRfids = (scanData.objects || [])
+        .map(s => String(s.rfid).trim());
+
+      if (scannedRfids.length === 0) {
+        setAssets([]);
+        return;
+      }
+
+      // 2️⃣ Get master assets
+      const masterRes = await fetch(
+        "http://localhost:8080/api/v1/collection/kln_asset_master"
+      );
+      const masterData = await masterRes.json();
+
+      // 3️⃣ Filter master where rfid matches scan rfid
+      const matched = (masterData.objects || [])
+        .filter(item =>
+          scannedRfids.includes(String(item.rfid_no).trim())
+        )
+        .map(item => ({
           apiUrl: item["@id"],
-          assetTagNo: item.barcode_no, rfidNo: item.rfid_no,
-          assetNo: item.asset_no, modelNo: item.model_no,
-          serialNo: item.serial_no, plant: item.plant,
-          location: item.location, custodian: item.custodian,
+          assetTagNo: item.barcode_no,
+          rfidNo: item.rfid_no,
+          assetNo: item.asset_no,
+          modelNo: item.model_no,
+          serialNo: item.serial_no,
+          plant: item.plant,
+          location: item.location,
+          custodian: item.custodian,
           mfgYear: item.mfg_year,
           verifiedDate: item.verified_status
-            ? new Date(item.verified_status).toLocaleDateString("en-GB").replace(/\//g, ".") : "",
-          assetStatus: item.asset_status
-        })));
-      })
-      .catch(err => console.error("API Error:", err));
-  }, []);
+            ? new Date(item.verified_status)
+                .toLocaleDateString("en-GB")
+                .replace(/\//g, ".")
+            : "",
+          assetStatus: item.asset_status,
+          comments: item.comments || "",
+        }));
+
+      setAssets(matched);
+
+    } catch (err) {
+      console.error("Match API Error:", err);
+    }
+  };
+
+  fetchMatchedAssets();
+  const interval = setInterval(fetchMatchedAssets, 5000);
+  return () => clearInterval(interval);
+
+}, []);
 
   const plants = ["All", ...Array.from(new Set(assets.map(a => a.plant).filter(Boolean)))];
   const filtered = assets.filter(a => {
@@ -798,6 +945,7 @@ export default function MainDashboard() {
                   <TH>Mfg Year</TH>
                   <TH>Verified Date</TH>
                   <TH mandatory>Status</TH>
+                  <TH>Comments</TH>
                   <TH>Actions</TH>
                 </tr>
               </thead>
@@ -809,7 +957,7 @@ export default function MainDashboard() {
                   ))
                   : (
                     <tr>
-                      <td colSpan={12} style={{ textAlign: "center", padding: "52px", color: "#94a3b8" }}>
+                      <td colSpan={13} style={{ textAlign: "center", padding: "52px", color: "#94a3b8" }}>
                         <div style={{ fontSize: "32px", marginBottom: "10px" }}>🔍</div>
                         <div style={{ fontSize: "14px", fontWeight: "700" }}>No assets found</div>
                         <div style={{ fontSize: "12px", marginTop: "4px" }}>Try adjusting your search or filters</div>

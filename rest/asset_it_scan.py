@@ -18,30 +18,48 @@ class AssetItScanData:
             plant_code = data.get("plant_code")
             department = data.get("department")
             date_time = data.get("date_time")
+
             if date_time:
                 date_time = datetime.strptime(date_time, "%Y-%m-%d").strftime("%Y-%m-%d")
+
             # generate object id
             object_id = misc.UUID(create=True)
+
             sqlapi.SQLexecute("""
                 INSERT INTO kln_asset_scan
                 (
-                    cdb_object_id,barcode,
-                    rfid,plant_code,
-                    department,date_time
+                    cdb_object_id,
+                    barcode,
+                    rfid,
+                    plant_code,
+                    department,
+                    date_time,
+                    is_scanned
                 )
                 VALUES
                 (
-                    '%s','%s','%s',%d,'%s','%s'
+                    '%s',
+                    '%s',
+                    '%s',
+                    %d,
+                    '%s',
+                    '%s',
+                    0
                 )
             """ % (
-                object_id,barcode,
-                rfid,plant_code,
-                department,date_time
+                object_id,
+                barcode,
+                rfid,
+                plant_code,
+                department,
+                date_time
             ))
+
             return {
                 "status": "success",
                 "message": "Inserted successfully"
             }
+
         except Exception as e:
             return {
                 "status": "error",
