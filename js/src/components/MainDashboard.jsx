@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import api from "../api/apiUtils";
 
 /* ─── GLOBAL STYLES ─────────────────────────────────────── */
 const STYLES = `
@@ -532,46 +533,13 @@ export default function MainDashboard() {
   const handleDeleteClick = (asset) => { setSelectedAsset({ ...asset }); setDeleteModal(true); };
 
 
-const getAuthHeadersWithCSRF = async (method = "GET", contentType = true) => {
-  const credentials = btoa("caddok:");
-
-  // Step 1: Trigger cookie set
-  await fetch("https://ktfrancesrv2.kalyanicorp.com/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 0", {
-    method: "GET",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-    },
-    credentials: "include",
-  });
-
-  const csrfToken = getCookie("CSRFToken");
-  console.log("Fetched CSRF Token from cookie:", csrfToken);
-
-  if (!csrfToken) {
-    throw new Error("CSRF token not found in cookies.");
-  }
-
-  const headers = {
-    Authorization: `Basic ${credentials}`,
-    "X-CSRF-Token": csrfToken,
-  };
-
-  if (contentType) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  return {
-    headers,
-    credentials: "include",
-  };
-};
-
   /* ─── fetch scans ─── */
   React.useEffect(() => {
     const fetchScans = async () => {
       try {
-        const res = await fetch("https://ktfrancesrv2.kalyanicorp.com/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 0");
-        const data = await res.json();
+        const data = await api.get(
+          "/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 0"
+        );
         const mapped = (data.objects || [])
           .filter(scan => !assets.some(a => a.rfidNo === scan.rfid))
           .map(scan => ({ scanId: scan["@id"], barcode: scan.barcode, rfid: scan.rfid, department: scan.department, plantCode: scan.plant_code, dateTime: scan.date_time }));
@@ -581,7 +549,7 @@ const getAuthHeadersWithCSRF = async (method = "GET", contentType = true) => {
     fetchScans();
     const interval = setInterval(fetchScans, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [assets]);
 
   /* ─── save edit ─── */
   const handleSaveEdit = async () => {
@@ -613,28 +581,39 @@ const getAuthHeadersWithCSRF = async (method = "GET", contentType = true) => {
     };
     try {
       if (selectedAsset.apiUrl) {
-          const authOptions = await getAuthHeadersWithCSRF("PUT");
-        await fetch(selectedAsset.apiUrl, { method: "PUT",...authOptions, body: JSON.stringify(payload) });
+        await api.put(
+          selectedAsset.apiUrl.replace(api.getBaseURL(), ""),
+          payload
+        );
       } else {
-          const authOptions = await getAuthHeadersWithCSRF("POST");
-        await fetch("https://ktfrancesrv2.kalyanicorp.com/internal/asset_it_master", { method: "POST",...authOptions, body: JSON.stringify(payload) });
+        await api.post("/internal/asset_it_master", payload);
       }
-      if (selectedAsset.scanId) {
-          const authOptions = await getAuthHeadersWithCSRF("PUT");
-        await fetch(selectedAsset.scanId, { method: "PUT", ...authOptions, body: JSON.stringify({ is_scanned: 1 }) });
-      }
-      setScannedAssets(prev => prev.filter(s => String(s.rfid).trim() !== String(selectedAsset.rfidNo).trim()));
-      setEditModal(false); setSelectedAsset(null); await fetchMatchedAssets();
-    } catch (err) { console.error("Save error:", err); }
+
+      alert("Saved successfully");
+
+      setScannedAssets(prev =>
+        prev.filter(s =>
+          String(s.rfid).trim() !==
+          String(selectedAsset.rfidNo).trim()
+        )
+      );
+
+      setEditModal(false);
+      setSelectedAsset(null);
+      await fetchMatchedAssets();
+
+    } catch (err) {
+      alert("Save failed");
+      console.error("Save error:", err);
+    }
   };
 
   /* ─── open scan for edit ─── */
   const openScanForEdit = async (scan) => {
   try {
-    const res = await fetch(
-      `https://ktfrancesrv2.kalyanicorp.com/api/v1/collection/kln_asset_master?$filter=rfid_no eq '${scan.rfid}'`
+    const data = await api.get(
+      `/api/v1/collection/kln_asset_master?$filter=rfid_no eq '${scan.rfid}'`
     );
-    const data = await res.json();
 
     const vd = scan.dateTime
       ? new Date(scan.dateTime).toLocaleDateString("en-GB").replace(/\//g, ".")
@@ -688,26 +667,40 @@ const getAuthHeadersWithCSRF = async (method = "GET", contentType = true) => {
 
   /* ─── delete ─── */
   const handleConfirmDelete = async () => {
-    try {
-        const authOptions = await getAuthHeadersWithCSRF("DELETE");
-      if (selectedAsset.apiUrl) await fetch(selectedAsset.apiUrl, { method: "DELETE",...authOptions});
-      if (selectedAsset.rfidNo) {
-        const scanRes = await fetch(`https://ktfrancesrv2.kalyanicorp.com/api/v1/collection/kln_asset_scan?$filter=rfid eq '${selectedAsset.rfidNo}'`);
-        const scanData = await scanRes.json();
-        if (scanData.objects && scanData.objects.length > 0)
-          await fetch(scanData.objects[0]["@id"], { method: "DELETE" });
+  try {
+    // Delete from master first
+    if (selectedAsset.apiUrl) {
+      await api.delete(
+        selectedAsset.apiUrl.replace(api.getBaseURL(), "")
+      );
+    }
+    // Delete scan entry
+    if (selectedAsset.rfidNo) {
+      const scanData = await api.get(
+        `/api/v1/collection/kln_asset_scan?$filter=rfid eq '${selectedAsset.rfidNo}'`
+      );
+      if (scanData.objects?.length > 0) {
+        await api.delete(
+          scanData.objects[0]["@id"].replace(api.getBaseURL(), "")
+        );
       }
-      setDeleteModal(false); setSelectedAsset(null); await fetchMatchedAssets();
-    } catch (err) { console.error("Delete error:", err); }
-  };
+    }
+
+    setDeleteModal(false);
+    setSelectedAsset(null);
+    await fetchMatchedAssets();
+
+  } catch (err) {
+    console.error("Delete error:", err);
+  }
+};
 
 
     const fetchMatchedAssets = async () => {
       try {
-        const scanRes = await fetch(
-          "https://ktfrancesrv2.kalyanicorp.com/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 1"
+        const scanData = await api.get(
+          "/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 1"
         );
-        const scanData = await scanRes.json();
 
         const scannedRfids = (scanData.objects || []).map(s =>
           String(s.rfid).trim()
@@ -718,10 +711,9 @@ const getAuthHeadersWithCSRF = async (method = "GET", contentType = true) => {
           return;
         }
 
-        const masterRes = await fetch(
-          "https://ktfrancesrv2.kalyanicorp.com/api/v1/collection/kln_asset_master"
+        const masterData = await api.get(
+          "/api/v1/collection/kln_asset_master"
         );
-        const masterData = await masterRes.json();
 
         const matched = (masterData.objects || [])
           .filter(item =>
