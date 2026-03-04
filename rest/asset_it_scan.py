@@ -18,6 +18,21 @@ class AssetItScanData:
             plant_code = data.get("plant_code")
             department = data.get("department")
             date_time = data.get("date_time")
+            if not rfid:
+                return {
+                    "status": "error",
+                    "message": "RFID is required"
+                }
+            duplicate = sqlapi.SQLselect("""
+                rfid
+                FROM kln_asset_scan
+                WHERE rfid = '%s'
+            """ % rfid)
+            if duplicate:
+                return {
+                    "status": "duplicate",
+                    "message": "RFID already scanned. Please scan another asset."
+                }
 
             if date_time:
                 date_time = datetime.strptime(date_time, "%Y-%m-%d").strftime("%Y-%m-%d")
