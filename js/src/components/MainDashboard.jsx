@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import EditModal from "./EditModal";
-// import DeleteModal from "./DeleteModal";
 import AssetRow from "./AssetRow";
+import MasterDataPage from "./MasterDataPage";
 import api from "../api/apiUtils";
-import {SearchIcon,LayersIcon,EditIcon,TrashIcon,CloseIcon,SaveIcon,WarningIcon,ScanIcon} from "./icons";
+import { SearchIcon, LayersIcon, EditIcon, TrashIcon, CloseIcon, SaveIcon, WarningIcon, ScanIcon } from "./icons";
 
 /* ─── GLOBAL STYLES ─────────────────────────────────────── */
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: 'DM Sans', 'Segoe UI', sans-serif; }
+  body { font-family: 'DM Sans', 'Segoe UI', sans-serif; margin: 0; }
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: #f8fafc; }
   ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
@@ -19,9 +19,11 @@ const STYLES = `
   @keyframes spin     { to { transform: rotate(360deg); } }
   @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(.7);opacity:.5;} }
   .trow:hover td      { background: #f5f8ff !important; }
-  .btn-edit:hover     { background: #e0e7ff !important; border-color: #a5b4fc !important; }
-  .btn-del:hover      { background: #fee2e2 !important; border-color: #fca5a5 !important; }
-  .scan-item:hover    { background: #f8fafc !important; }
+  .btn-edit:hover     { background: #e0e7ff !important; border-color: #a5b4fc !important; color: #4338ca !important; }
+  .btn-del:hover      { background: #fee2e2 !important; border-color: #fca5a5 !important; color: #dc2626 !important; }
+  .scan-item:hover    { background: #f5f8ff !important; }
+  .nav-tab:hover      { background: rgba(255,255,255,0.08) !important; }
+  .scan-btn:hover     { filter: brightness(1.1); }
 `;
 
 /* ─── CONFIG ─────────────────────────────────────────────── */
@@ -29,12 +31,6 @@ const STATUS_CONFIG = {
   Working:         { bg: "#ecfdf5", color: "#059669", dot: "#10b981", border: "#a7f3d0", glow: "rgba(16,185,129,.12)" },
   "Under Utilise": { bg: "#fffbeb", color: "#d97706", dot: "#f59e0b", border: "#fde68a", glow: "rgba(245,158,11,.12)" },
   Idle:            { bg: "#fff1f2", color: "#e11d48", dot: "#f43f5e", border: "#fecdd3", glow: "rgba(244,63,94,.12)" },
-};
-const PLANT_COLORS = {
-  Mundhwa:  { color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
-  Baramati: { color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
-  R1:       { color: "#0891b2", bg: "#ecfeff", border: "#a5f3fc" },
-  R2:       { color: "#ea580c", bg: "#fff7ed", border: "#fed7aa" },
 };
 
 /* ─── STAT CARD ──────────────────────────────────────────── */
@@ -46,10 +42,10 @@ const StatCard = ({ label, value, accent, emoji, onClick, active }) => (
     boxShadow: active ? `0 0 0 4px ${accent}15` : "0 1px 8px rgba(0,0,0,0.05)",
     display: "flex", alignItems: "center", gap: "14px",
     flex: "1 1 0", minWidth: "130px", position: "relative", overflow: "hidden",
-    animation: "fadeUp .35s ease both", transition: "all .2s"
+    animation: "fadeUp .35s ease both", transition: "all .2s",
   }}>
-    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", background: accent, borderRadius: "14px 0 0 14px" }}/>
-    <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: accent + "15", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", background: accent, borderRadius: "14px 0 0 14px" }} />
+    <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: accent + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
       {emoji}
     </div>
     <div>
@@ -70,30 +66,29 @@ const TH = ({ children, mandatory }) => (
    MAIN DASHBOARD
 ══════════════════════════════════════════════════════════ */
 export default function MainDashboard() {
-  const [assets, setAssets]               = useState([]);
-  const [search, setSearch]               = useState("");
-  const [statusFilter, setStatusFilter]   = useState("All");
-  const [plantFilter, setPlantFilter]     = useState("All");
-  const [editModal, setEditModal]         = useState(false);
-//   const [deleteModal, setDeleteModal]     = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState(null);
-  const [scannedAssets, setScannedAssets] = useState([]);
-  const [showScanPanel, setShowScanPanel] = useState(false);
-  const [currentPage, setCurrentPage]     = useState(1);
-  const [rowsPerPage]                     = useState(10);
+  const [assets, setAssets]                   = useState([]);
+  const [search, setSearch]                   = useState("");
+  const [statusFilter, setStatusFilter]       = useState("All");
+  const [plantFilter, setPlantFilter]         = useState("All");
+  const [editModal, setEditModal]             = useState(false);
+  const [selectedAsset, setSelectedAsset]     = useState(null);
+  const [scannedAssets, setScannedAssets]     = useState([]);
+  const [showScanPanel, setShowScanPanel]     = useState(false);
+  const [noMasterWarning, setNoMasterWarning] = useState("");
+  const [currentPage, setCurrentPage]         = useState(1);
+  const [rowsPerPage]                         = useState(10);
   const [verifiedDateFilter, setVerifiedDateFilter] = useState("");
-  const [saving, setSaving]               = useState(false);
+  const [saving, setSaving]                   = useState(false);
+  const [activePage, setActivePage]           = useState("registry");
 
-  const handleEdit        = (asset) => { setSelectedAsset({ ...asset }); setEditModal(true); };
-//   const handleDeleteClick = (asset) => { setSelectedAsset({ ...asset }); setDeleteModal(true); };
+  const handleEdit = (asset) => { setSelectedAsset({ ...asset }); setEditModal(true); };
 
-  /* ─── fetchMatchedAssets — hoisted so every handler can call it ─── */
+  /* ─── fetchMatchedAssets ─── */
   const fetchMatchedAssets = async () => {
     try {
       const scanData   = await api.get("/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 1");
       const scannedRfids = (scanData.objects || []).map(s => String(s.rfid).trim());
       if (scannedRfids.length === 0) { setAssets([]); return; }
-
       const masterData = await api.get("/api/v1/collection/kln_asset_master");
       const matched = (masterData.objects || [])
         .filter(item => scannedRfids.includes(String(item.rfid_no).trim()))
@@ -140,137 +135,68 @@ export default function MainDashboard() {
     if (!selectedAsset.assetTagNo?.trim()) { alert("Asset Tag No is mandatory"); return; }
     if (!selectedAsset.plant?.trim())       { alert("Plant is mandatory"); return; }
     if (!selectedAsset.assetStatus?.trim()) { alert("Status is mandatory"); return; }
-
-    /* date: dd.mm.yyyy → yyyy-mm-dd */
     let formattedDate = null;
     if (selectedAsset.verifiedDate) {
       const parts = selectedAsset.verifiedDate.split(".");
-      formattedDate = parts.length === 3
-        ? `${parts[2]}-${parts[1]}-${parts[0]}`
-        : selectedAsset.verifiedDate;
+      formattedDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : selectedAsset.verifiedDate;
     }
-
     const payload = {
-      barcode_no:      selectedAsset.assetTagNo,
-      rfid_no:         selectedAsset.rfidNo,
-      asset_no:        selectedAsset.assetNo        || "",
-      model_no:        selectedAsset.modelNo        || "",
-      serial_no:       selectedAsset.serialNo       || "",
-      plant:           selectedAsset.plant,
-      location:        selectedAsset.location       || "",
-      custodian:       selectedAsset.custodian      || "",
-      mfg_year:        selectedAsset.mfgYear ? parseInt(selectedAsset.mfgYear) : null,
-      verified_status: formattedDate,
-      asset_status:    selectedAsset.assetStatus,
-      comments:        selectedAsset.comments       || ""
+      barcode_no: selectedAsset.assetTagNo, rfid_no: selectedAsset.rfidNo,
+      asset_no: selectedAsset.assetNo || "", model_no: selectedAsset.modelNo || "",
+      serial_no: selectedAsset.serialNo || "", plant: selectedAsset.plant,
+      location: selectedAsset.location || "", custodian: selectedAsset.custodian || "",
+      mfg_year: selectedAsset.mfgYear ? parseInt(selectedAsset.mfgYear) : null,
+      verified_status: formattedDate, asset_status: selectedAsset.assetStatus,
+      comments: selectedAsset.comments || ""
     };
-
     setSaving(true);
     try {
-      /* ── Step 1: save / update the asset master record ── */
       if (selectedAsset.apiUrl) {
         await api.put(selectedAsset.apiUrl.replace(api.getBaseURL(), ""), payload);
       } else {
         await api.post("/internal/asset_it_master", payload);
       }
-
-      /* ── Step 2: mark scan as processed (is_scanned = 1) ──────────────
-         Without this the asset is saved in master but the table never
-         shows it because fetchMatchedAssets filters by is_scanned = 1.
-      ─────────────────────────────────────────────────────────────────── */
       if (selectedAsset.scanId) {
-        await api.put(
-          selectedAsset.scanId.replace(api.getBaseURL(), ""),
-          { is_scanned: 1 }
-        );
+        await api.put(selectedAsset.scanId.replace(api.getBaseURL(), ""), { is_scanned: 1 });
       }
-
-      /* remove from pending badge list */
-      setScannedAssets(prev =>
-        prev.filter(s => String(s.rfid).trim() !== String(selectedAsset.rfidNo).trim())
-      );
-
+      setScannedAssets(prev => prev.filter(s => String(s.rfid).trim() !== String(selectedAsset.rfidNo).trim()));
       alert("Saved successfully");
       setEditModal(false);
       setSelectedAsset(null);
-
-      /* refresh table */
       await fetchMatchedAssets();
-
     } catch (err) {
       alert("Save failed — check console for details.");
       console.error("Save error:", err);
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   /* ─── open scan panel item ─── */
   const openScanForEdit = async (scan) => {
     try {
       const data = await api.get(`/api/v1/collection/kln_asset_master?$filter=rfid_no eq '${scan.rfid}'`);
-      const vd   = scan.dateTime ? new Date(scan.dateTime).toLocaleDateString("en-GB").replace(/\//g, ".") : "";
-
+      const vd = scan.dateTime ? new Date(scan.dateTime).toLocaleDateString("en-GB").replace(/\//g, ".") : "";
       if (data.objects && data.objects.length > 0) {
         const item = data.objects[0];
         setSelectedAsset({
-          apiUrl:      item["@id"],
-          scanId:      scan.scanId,       // ← keep scanId so Step 2 can fire
-          assetTagNo:  item.barcode_no,
-          rfidNo:      item.rfid_no,
-          assetNo:     item.asset_no     || "",
-          modelNo:     item.model_no     || "",
-          serialNo:    item.serial_no    || "",
-          plant:       item.plant        || "",
-          location:    item.location     || "",
-          custodian:   item.custodian    || "",
-          mfgYear:     item.mfg_year     || "",
-          verifiedDate: vd,
-          assetStatus: item.asset_status || "Working",
-          comments:    item.comments     || ""
+          apiUrl: item["@id"], scanId: scan.scanId, assetTagNo: item.barcode_no,
+          rfidNo: item.rfid_no, assetNo: item.asset_no || "", modelNo: item.model_no || "",
+          serialNo: item.serial_no || "", plant: item.plant || "", location: item.location || "",
+          custodian: item.custodian || "", mfgYear: item.mfg_year || "", verifiedDate: vd,
+          assetStatus: item.asset_status || "Working", comments: item.comments || ""
         });
       } else {
-        /* brand-new asset */
+        setNoMasterWarning("No master data found for scanned asset. Please enter details manually.");
         setSelectedAsset({
-          scanId:      scan.scanId,       // ← required for Step 2
-          apiUrl:      null,
-          assetTagNo:  scan.barcode      || "",
-          rfidNo:      scan.rfid         || "",
-          assetNo:     "",
-          modelNo:     "",
-          serialNo:    "",
-          plant:       "",
-          location:    "",
-          custodian:   "",
-          mfgYear:     "",
-          verifiedDate: vd,
-          assetStatus: "Working",
-          comments:    ""                 // ← was missing before
+          scanId: scan.scanId, apiUrl: null, assetTagNo: scan.barcode || "",
+          rfidNo: scan.rfid || "", assetNo: "", modelNo: "", serialNo: "", plant: "",
+          location: "", custodian: "", mfgYear: "", verifiedDate: vd,
+          assetStatus: "Working", comments: ""
         });
       }
-
       setEditModal(true);
       setShowScanPanel(false);
     } catch (err) { console.error("Master fetch error:", err); }
   };
-
-//   /* ─── delete ─── */
-//   const handleConfirmDelete = async () => {
-//     try {
-//       if (selectedAsset.apiUrl) {
-//         await api.delete(selectedAsset.apiUrl.replace(api.getBaseURL(), ""));
-//       }
-//       if (selectedAsset.rfidNo) {
-//         const scanData = await api.get(`/api/v1/collection/kln_asset_scan?$filter=rfid eq '${selectedAsset.rfidNo}'`);
-//         if (scanData.objects?.length > 0) {
-//           await api.delete(scanData.objects[0]["@id"].replace(api.getBaseURL(), ""));
-//         }
-//       }
-//       setDeleteModal(false);
-//       setSelectedAsset(null);
-//       await fetchMatchedAssets();
-//     } catch (err) { console.error("Delete error:", err); }
-//   };
 
   /* ─── computed values ─── */
   const plants = ["All", ...Array.from(new Set(assets.map(a => a.plant).filter(Boolean)))];
@@ -279,7 +205,7 @@ export default function MainDashboard() {
     return (
       Object.values(a).some(v => String(v).toLowerCase().includes(q)) &&
       (statusFilter === "All" || a.assetStatus === statusFilter) &&
-      (plantFilter  === "All" || a.plant       === plantFilter)  &&
+      (plantFilter  === "All" || a.plant       === plantFilter) &&
       (!verifiedDateFilter    || a.verifiedDate === verifiedDateFilter)
     );
   });
@@ -308,54 +234,108 @@ export default function MainDashboard() {
       <style>{STYLES}</style>
       <div style={{ minHeight: "100vh", background: "#f0f2f5", fontFamily: "'DM Sans','Segoe UI',sans-serif", position: "relative" }}>
 
-        {/* HEADER */}
+        {/* ══ HEADER ══ */}
         <div style={{ background: "linear-gradient(100deg,#0f172a 0%,#1e3a5f 55%,#0c4a6e 100%)", height: "60px", padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 4px 24px rgba(0,0,0,0.28)", position: "sticky", top: 0, zIndex: 100 }}>
+
+          {/* Left: Brand */}
           <div style={{ display: "flex", alignItems: "center", gap: "13px" }}>
-            <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: "11px", padding: "7px", display: "flex", border: "1px solid rgba(255,255,255,.08)" }}><LayersIcon /></div>
+            <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: "11px", padding: "7px", display: "flex", border: "1px solid rgba(255,255,255,.08)" }}>
+              <LayersIcon />
+            </div>
             <div>
               <div style={{ color: "white", fontWeight: "800", fontSize: "15px", letterSpacing: "-0.4px" }}>Asset Management System</div>
               <div style={{ color: "rgba(255,255,255,0.38)", fontSize: "9.5px", letterSpacing: "1.2px", textTransform: "uppercase" }}>RFID · TRACK · AUDIT</div>
             </div>
           </div>
-          <button onClick={() => setShowScanPanel(!showScanPanel)} style={{ position: "relative", background: scannedAssets.length ? "rgba(239,68,68,.15)" : "rgba(255,255,255,.08)", border: `1px solid ${scannedAssets.length ? "rgba(239,68,68,.45)" : "rgba(255,255,255,.18)"}`, borderRadius: "9px", padding: "7px 16px", color: scannedAssets.length ? "#fca5a5" : "rgba(255,255,255,.85)", fontSize: "12.5px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px", fontFamily: "inherit", transition: "all .2s" }}>
-            <ScanIcon />
-            Scanned Asset
-            {scannedAssets.length > 0 && (
-              <span style={{ background: "#ef4444", color: "white", borderRadius: "99px", fontSize: "10px", padding: "1px 7px", fontWeight: "800", animation: "pulseDot 2s infinite", minWidth: "20px", textAlign: "center" }}>{scannedAssets.length}</span>
-            )}
-          </button>
+
+          {/* Right: Nav tabs + Scan button */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* Nav tabs */}
+            <div style={{ display: "flex", gap: "2px", background: "rgba(0,0,0,0.2)", borderRadius: "10px", padding: "3px" }}>
+              {[
+                { id: "registry", label: "📦 Verified Assets" },
+                { id: "master",   label: "🗂 Master Data" },
+              ].map(tab => (
+                <button key={tab.id} className="nav-tab" onClick={() => setActivePage(tab.id)} style={{
+                  padding: "5px 14px", borderRadius: "8px", border: "none", cursor: "pointer",
+                  fontSize: "12px", fontWeight: "700", fontFamily: "inherit", transition: "all .18s",
+                  background: activePage === tab.id ? "rgba(255,255,255,0.14)" : "transparent",
+                  color: activePage === tab.id ? "white" : "rgba(255,255,255,0.5)",
+                  boxShadow: activePage === tab.id ? "0 1px 4px rgba(0,0,0,0.18)" : "none"
+                }}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+          </div>
         </div>
 
-        {/* SCAN PANEL */}
+        {/* ══ FLOATING SCAN BUTTON (bottom-right) ══ */}
+        <button className="scan-btn" onClick={() => setShowScanPanel(!showScanPanel)} style={{
+          position: "fixed", bottom: "28px", right: "28px", zIndex: 200,
+          background: scannedAssets.length
+            ? "linear-gradient(135deg,#ef4444,#dc2626)"
+            : "linear-gradient(135deg,#1e3a5f,#0c4a6e)",
+          border: "none",
+          borderRadius: "16px", padding: "13px 20px",
+          color: "white",
+          fontSize: "13px", fontWeight: "700", cursor: "pointer",
+          display: "flex", alignItems: "center", gap: "9px", fontFamily: "inherit",
+          boxShadow: scannedAssets.length
+            ? "0 8px 24px rgba(239,68,68,0.45), 0 2px 8px rgba(0,0,0,0.2)"
+            : "0 8px 24px rgba(15,23,42,0.35), 0 2px 8px rgba(0,0,0,0.15)",
+          transition: "all .2s"
+        }}>
+          <ScanIcon />
+          Scanned Assets
+          {scannedAssets.length > 0 && (
+            <span style={{ background: "rgba(255,255,255,0.25)", color: "white", borderRadius: "99px", fontSize: "11px", padding: "2px 9px", fontWeight: "800", animation: "pulseDot 2s infinite", minWidth: "22px", textAlign: "center", backdropFilter: "blur(4px)" }}>
+              {scannedAssets.length}
+            </span>
+          )}
+        </button>
+
+        {/* ══ SCAN PANEL ══ */}
         {showScanPanel && (
-          <div style={{ position: "absolute", right: "24px", top: "68px", width: "330px", background: "white", borderRadius: "16px", boxShadow: "0 16px 50px rgba(0,0,0,.18), 0 0 0 1px #e2e8f0", zIndex: 999, overflow: "hidden", animation: "slideDown .18s ease" }}>
+          <div style={{ position: "fixed", right: "24px", bottom: "90px", width: "340px", background: "white", borderRadius: "16px", boxShadow: "0 16px 50px rgba(0,0,0,.18), 0 0 0 1px #e2e8f0", zIndex: 999, overflow: "hidden", animation: "slideDown .18s ease" }}>
             <div style={{ padding: "14px 16px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(135deg,#f8f9ff,#fff)" }}>
               <div>
                 <div style={{ fontWeight: "800", fontSize: "13px", color: "#0f172a" }}>Newly Scanned Assets</div>
-                <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "1px" }}>Click to register or update</div>
+                <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "1px" }}>Click an item to register or update</div>
               </div>
               <button onClick={() => setShowScanPanel(false)} style={{ width: "28px", height: "28px", borderRadius: "7px", border: "1.5px solid #e2e8f0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8" }}>
                 <CloseIcon />
               </button>
             </div>
             {scannedAssets.length === 0
-              ? <div style={{ padding: "28px", textAlign: "center", color: "#94a3b8", fontSize: "12px" }}><div style={{ fontSize: "28px", marginBottom: "8px" }}>📡</div>No new scans yet</div>
-              : (
-                <div style={{ maxHeight: "340px", overflowY: "auto" }}>
+              ? (
+                <div style={{ padding: "36px", textAlign: "center", color: "#94a3b8" }}>
+                  <div style={{ fontSize: "32px", marginBottom: "10px" }}>📡</div>
+                  <div style={{ fontSize: "13px", fontWeight: "600", color: "#64748b" }}>No new scans yet</div>
+                  <div style={{ fontSize: "11px", marginTop: "4px" }}>Waiting for RFID signals…</div>
+                </div>
+              ) : (
+                <div style={{ maxHeight: "360px", overflowY: "auto" }}>
                   {scannedAssets.map(scan => (
-                    <div key={scan.scanId} className="scan-item" onClick={() => openScanForEdit(scan)} style={{ padding: "11px 16px", borderBottom: "1px solid #f8fafc", background: "white", cursor: "pointer" }}>
+                    <div key={scan.scanId} className="scan-item" onClick={() => openScanForEdit(scan)} style={{ padding: "12px 16px", borderBottom: "1px solid #f8fafc", background: "white", cursor: "pointer", transition: "background .15s" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
                           <div style={{ fontSize: "12px", color: "#0f172a", fontWeight: "600" }}>
-                            <span style={{ color: "#64748b", fontWeight: "700" }}>Asset Tag No. :</span>{" "}
-                            <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{scan.barcode || "—"}</span>
+                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "10.5px" }}>ASSET TAG</span>
+                            <span style={{ fontFamily: "'IBM Plex Mono',monospace", display: "block", fontSize: "13px", marginTop: "2px" }}>{scan.barcode || "—"}</span>
                           </div>
-                          <div style={{ fontSize: "11.5px", color: "#334155" }}>
-                            <span style={{ color: "#64748b", fontWeight: "700" }}>RFID :</span>{" "}
-                            <span style={{ fontFamily: "'IBM Plex Mono',monospace", color: "#0891b2" }}>{scan.rfid || "Not Available"}</span>
+                          <div style={{ fontSize: "11px", color: "#64748b" }}>
+                            <span style={{ fontWeight: "700", fontSize: "10.5px" }}>RFID: </span>
+                            <span style={{ fontFamily: "'IBM Plex Mono',monospace", color: "#0891b2", fontWeight: "600" }}>{scan.rfid || "Not Available"}</span>
                           </div>
                         </div>
-                        {scan.plantCode && <span style={{ fontSize: "10px", background: "#dbeafe", color: "#1e40af", padding: "2px 8px", borderRadius: "5px", fontWeight: "700" }}>{scan.plantCode}</span>}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "5px" }}>
+                          {scan.plantCode && (
+                            <span style={{ fontSize: "10px", background: "#dbeafe", color: "#1e40af", padding: "2px 8px", borderRadius: "5px", fontWeight: "700" }}>{scan.plantCode}</span>
+                          )}
+                          <span style={{ fontSize: "10px", color: "#94a3b8", background: "#f1f5f9", padding: "2px 8px", borderRadius: "5px" }}>Click to edit →</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -365,113 +345,123 @@ export default function MainDashboard() {
           </div>
         )}
 
+        {/* ══ PAGE CONTENT ══ */}
         <div style={{ padding: "22px 26px" }}>
-          {/* Title */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: "21px", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.5px" }}>Asset Registry</h2>
-              <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#94a3b8" }}>Track and manage all RFID-tagged assets across plants</p>
+
+          {/* Breadcrumb / page title */}
+          <div style={{ marginBottom: "20px", animation: "fadeUp .3s ease" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.7px" }}>
+                {activePage === "registry" ? "Asset Registry" : "Master Data"}
+              </span>
             </div>
+            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.5px" }}>
+              {activePage === "registry" ? "Verified Assets" : "Master Data Management"}
+            </h2>
+            <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "#64748b" }}>
+              {activePage === "registry"
+                ? "Track and manage all RFID-tagged assets across plants"
+                : "Manage asset master records — add, edit, and remove entries"}
+            </p>
           </div>
 
-          {/* Stat Cards */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "10px", flexWrap: "wrap" }}>
-            <StatCard label="Total Assets"  value={counts.total}   accent="#3b82f6" emoji="📦" onClick={() => setStatusFilter("All")}           active={statusFilter === "All"} />
-            <StatCard label="Working"       value={counts.working} accent="#10b981" emoji="✅" onClick={() => setStatusFilter("Working")}        active={statusFilter === "Working"} />
-            <StatCard label="Under Utilise" value={counts.under}   accent="#f59e0b" emoji="⚠️" onClick={() => setStatusFilter("Under Utilise")} active={statusFilter === "Under Utilise"} />
-            <StatCard label="Idle"          value={counts.idle}    accent="#f43f5e" emoji="🔴" onClick={() => setStatusFilter("Idle")}           active={statusFilter === "Idle"} />
-            <StatCard label="RFID Scanned"  value={counts.scanned} accent="#0ea5e9" emoji="📡" />
-          </div>
-
-          {/* Table Card */}
-          <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e8eef6", boxShadow: "0 2px 16px rgba(0,0,0,0.06)", overflow: "hidden" }}>
-
-            {/* Toolbar */}
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", background: "linear-gradient(180deg,#fafbff,#fff)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontWeight: "800", fontSize: "14px", color: "#0f172a" }}>Asset Records</span>
-                <span style={{ background: "#dbeafe", color: "#1d4ed8", fontSize: "10.5px", fontWeight: "800", padding: "2px 10px", borderRadius: "20px", fontFamily: "'IBM Plex Mono',monospace" }}>{filtered.length}</span>
+          {/* ── REGISTRY PAGE ── */}
+          {activePage === "registry" && (
+            <>
+              {/* Stat Cards */}
+              <div style={{ display: "flex", gap: "12px", marginBottom: "18px", flexWrap: "wrap" }}>
+                <StatCard label="Total Assets"  value={counts.total}   accent="#3b82f6" emoji="📦" onClick={() => setStatusFilter("All")}           active={statusFilter === "All"} />
+                <StatCard label="Working"       value={counts.working} accent="#10b981" emoji="✅" onClick={() => setStatusFilter("Working")}        active={statusFilter === "Working"} />
+                <StatCard label="Under Utilise" value={counts.under}   accent="#f59e0b" emoji="⚠️" onClick={() => setStatusFilter("Under Utilise")} active={statusFilter === "Under Utilise"} />
+                <StatCard label="Idle"          value={counts.idle}    accent="#f43f5e" emoji="🔴" onClick={() => setStatusFilter("Idle")}           active={statusFilter === "Idle"} />
+                <StatCard label="RFID Scanned"  value={counts.scanned} accent="#0ea5e9" emoji="📡" />
               </div>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                <select value={plantFilter} onChange={e => setPlantFilter(e.target.value)} style={selectStyle}>
-                  {plants.map(p => <option key={p}>{p}</option>)}
-                </select>
-                <input type="text" placeholder="Verified Date (dd.mm.yyyy)" value={verifiedDateFilter}
-                  onChange={e => { setVerifiedDateFilter(e.target.value); setCurrentPage(1); }}
-                  style={{ padding: "7px 10px", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontSize: "12px", width: "170px", fontFamily: "inherit", outline: "none" }}
-                />
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", display: "flex", pointerEvents: "none" }}><SearchIcon /></span>
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search any field…"
-                    style={{ paddingLeft: "32px", paddingRight: "12px", paddingTop: "7px", paddingBottom: "7px", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontSize: "12px", color: "#334155", outline: "none", background: "white", width: "200px", fontFamily: "inherit", transition: "border-color .15s, box-shadow .15s" }}
-                    onFocus={e => { e.target.style.borderColor = "#6366f1"; e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,.1)"; }}
-                    onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
-                  />
+
+              {/* Table Card */}
+              <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e8eef6", boxShadow: "0 2px 16px rgba(0,0,0,0.06)", overflow: "hidden" }}>
+
+                {/* Toolbar */}
+                <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", background: "linear-gradient(180deg,#fafbff,#fff)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontWeight: "800", fontSize: "14px", color: "#0f172a" }}>Asset Records</span>
+                    <span style={{ background: "#dbeafe", color: "#1d4ed8", fontSize: "10.5px", fontWeight: "800", padding: "2px 10px", borderRadius: "20px", fontFamily: "'IBM Plex Mono',monospace" }}>{filtered.length}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                    <select value={plantFilter} onChange={e => setPlantFilter(e.target.value)} style={selectStyle}>
+                      {plants.map(p => <option key={p}>{p}</option>)}
+                    </select>
+                    <input type="text" placeholder="Verified Date (dd.mm.yyyy)" value={verifiedDateFilter}
+                      onChange={e => { setVerifiedDateFilter(e.target.value); setCurrentPage(1); }}
+                      style={{ padding: "7px 10px", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontSize: "12px", width: "170px", fontFamily: "inherit", outline: "none" }}
+                    />
+                    <div style={{ position: "relative" }}>
+                      <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", display: "flex", pointerEvents: "none" }}><SearchIcon /></span>
+                      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search any field…"
+                        style={{ paddingLeft: "32px", paddingRight: "12px", paddingTop: "7px", paddingBottom: "7px", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontSize: "12px", color: "#334155", outline: "none", background: "white", width: "200px", fontFamily: "inherit", transition: "all .15s" }}
+                        onFocus={e => { e.target.style.borderColor = "#6366f1"; e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,.1)"; }}
+                        onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <TH mandatory>Asset Tag No.</TH><TH>RFID No.</TH><TH>Asset No.</TH>
+                        <TH>Model No.</TH><TH>Serial No.</TH><TH mandatory>Plant</TH>
+                        <TH>Location</TH><TH>Custodian</TH><TH>Mfg Year</TH>
+                        <TH>Verified Date</TH><TH mandatory>Status</TH><TH>Comments</TH><TH>Actions</TH>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.length > 0
+                        ? paginatedData.map((asset, i) => <AssetRow key={i} asset={asset} index={i} handleEdit={handleEdit} />)
+                        : (
+                          <tr>
+                            <td colSpan={13} style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                              <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔍</div>
+                              <div style={{ fontSize: "15px", fontWeight: "700", marginBottom: "4px", color: "#64748b" }}>No assets found</div>
+                              <div style={{ fontSize: "12px" }}>Try adjusting your search or filters</div>
+                            </td>
+                          </tr>
+                        )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination footer */}
+                <div style={{ padding: "14px 18px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>
+                    Page <strong>{currentPage}</strong> of <strong>{totalPages || 1}</strong>
+                    <span style={{ color: "#94a3b8", marginLeft: "8px" }}>({filtered.length} records)</span>
+                  </span>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button disabled={currentPage === 1 || totalPages <= 1} onClick={() => setCurrentPage(p => p - 1)} style={{ ...pgBtn, opacity: currentPage === 1 || totalPages <= 1 ? 0.45 : 1, cursor: currentPage === 1 || totalPages <= 1 ? "not-allowed" : "pointer" }}>◀ Prev</button>
+                    <button disabled={currentPage === totalPages || totalPages <= 1} onClick={() => setCurrentPage(p => p + 1)} style={{ ...pgBtn, opacity: currentPage === totalPages || totalPages <= 1 ? 0.45 : 1, cursor: currentPage === totalPages || totalPages <= 1 ? "not-allowed" : "pointer" }}>Next ▶</button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
+          )}
 
-            {/* Table */}
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <TH mandatory>Asset Tag No.</TH><TH>RFID No.</TH><TH>Asset No.</TH>
-                    <TH>Model No.</TH><TH>Serial No.</TH><TH mandatory>Plant</TH>
-                    <TH>Location</TH><TH>Custodian</TH><TH>Mfg Year</TH>
-                    <TH>Verified Date</TH><TH mandatory>Status</TH><TH>Comments</TH><TH>Actions</TH>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length > 0
-                      ? paginatedData.map((asset, i) => <AssetRow key={i} asset={asset} index={i} handleEdit={handleEdit} />)
- //                   ? paginatedData.map((asset, i) => <AssetRow key={i} asset={asset} index={i} handleEdit={handleEdit} handleDelete={handleDeleteClick} />)
-                    : (
-                      <tr>
-                        <td colSpan={13} style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
-                          <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔍</div>
-                          <div style={{ fontSize: "15px", fontWeight: "700", marginBottom: "4px", color: "#64748b" }}>No assets found</div>
-                          <div style={{ fontSize: "12px" }}>Try adjusting your search or filters</div>
-                        </td>
-                      </tr>
-                    )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination footer */}
-            <div style={{ padding: "14px 18px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>
-                Page <strong>{currentPage}</strong> of <strong>{totalPages || 1}</strong>
-                <span style={{ color: "#94a3b8", marginLeft: "8px" }}>({filtered.length} records)</span>
-              </span>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button disabled={currentPage === 1 || totalPages <= 1} onClick={() => setCurrentPage(p => p - 1)} style={{ ...pgBtn, opacity: currentPage === 1 || totalPages <= 1 ? 0.45 : 1, cursor: currentPage === 1 || totalPages <= 1 ? "not-allowed" : "pointer" }}>◀ Prev</button>
-                <button disabled={currentPage === totalPages || totalPages <= 1} onClick={() => setCurrentPage(p => p + 1)} style={{ ...pgBtn, opacity: currentPage === totalPages || totalPages <= 1 ? 0.45 : 1, cursor: currentPage === totalPages || totalPages <= 1 ? "not-allowed" : "pointer" }}>Next ▶</button>
-              </div>
-            </div>
-          </div>
+          {/* ── MASTER DATA PAGE ── */}
+          {activePage === "master" && <MasterDataPage />}
         </div>
 
-        {/* MODALS */}
+        {/* ══ EDIT MODAL ══ */}
         {editModal && selectedAsset && (
           <EditModal
             asset={selectedAsset}
-            onClose={() => { setEditModal(false); setSelectedAsset(null); }}
+            warning={noMasterWarning}
+            onClose={() => { setEditModal(false); setSelectedAsset(null); setNoMasterWarning(""); }}
             onSave={handleSaveEdit}
             onChange={setSelectedAsset}
             saving={saving}
           />
         )}
-    {/*
-        {deleteModal && selectedAsset && (
-          <DeleteModal
-            asset={selectedAsset}
-            onClose={() => { setDeleteModal(false); setSelectedAsset(null); }}
-            onConfirm={handleConfirmDelete}
-          />
-        )}
-    */}
       </div>
     </>
   );

@@ -23,17 +23,6 @@ class AssetItScanData:
                     "status": "error",
                     "message": "RFID is required"
                 }
-            duplicate = sqlapi.SQLselect("""
-                rfid
-                FROM kln_asset_scan
-                WHERE rfid = '%s'
-            """ % rfid)
-            if duplicate:
-                return {
-                    "status": "duplicate",
-                    "message": "RFID already scanned. Please scan another asset."
-                }
-
             if date_time:
                 date_time = datetime.strptime(date_time, "%Y-%m-%d").strftime("%Y-%m-%d")
 
@@ -78,7 +67,7 @@ class AssetItScanData:
         except Exception as e:
             return {
                 "status": "error",
-                "message": str(e)
+                "message": "RFID already scanned. Please scan another asset."
             }
 
 @AssetItScanAPI.path(model=AssetItScanData, path="")

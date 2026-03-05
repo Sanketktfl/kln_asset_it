@@ -27,10 +27,12 @@ const STATUS_CONFIG = {
 /* ────────── EDIT MODAL ──────────────────────────────────── */
 export default function EditModal({
   asset,
+  warning,
   onClose,
   onSave,
   onChange,
-  saving
+  saving,
+  allowRfidEdit = false
 }) {
 
   return (
@@ -69,6 +71,24 @@ export default function EditModal({
         </button>
       </div>
 
+      {warning && (
+      <div style={{
+        background: "#fff7ed",
+        border: "1px solid #fdba74",
+        color: "#9a3412",
+        padding: "10px 14px",
+        borderRadius: "8px",
+        fontSize: "12px",
+        fontWeight: "600",
+        marginBottom: "12px",
+        display: "flex",
+        alignItems: "center",
+        gap: "6px"
+      }}>
+        ⚠ {warning}
+      </div>
+    )}
+
       {/* Body */}
       <div style={{ padding: "22px 26px" }}>
 
@@ -98,7 +118,12 @@ export default function EditModal({
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
           <FormField label="Asset Tag No." value={asset.assetTagNo} required onChange={e => onChange({ ...asset, assetTagNo: e.target.value })} />
-          <FormField label="RFID No." value={asset.rfidNo} disabled />
+          <FormField
+              label="RFID No."
+              value={asset.rfidNo}
+              disabled={!allowRfidEdit}
+              onChange={e => onChange({ ...asset, rfidNo: e.target.value })}
+            />
           <FormField label="Asset No." value={asset.assetNo} onChange={e => onChange({ ...asset, assetNo: e.target.value })} />
           <FormField label="Model No." value={asset.modelNo} onChange={e => onChange({ ...asset, modelNo: e.target.value })} />
           <FormField label="Serial No." value={asset.serialNo} onChange={e => onChange({ ...asset, serialNo: e.target.value })} />
