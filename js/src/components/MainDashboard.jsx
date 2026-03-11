@@ -23,7 +23,8 @@ const STYLES = `
   .btn-del:hover      { background: #fee2e2 !important; border-color: #fca5a5 !important; color: #dc2626 !important; }
   .scan-item:hover    { background: #f5f8ff !important; }
   .nav-tab:hover      { background: rgba(255,255,255,0.08) !important; }
-  .scan-btn:hover     { filter: brightness(1.1); }
+  .scan-btn-inline:hover { background: #2a4a6e !important; border-color: #2a4a6e !important; }
+  .pg-btn:hover { background: #1e3a5f !important; color: white !important; border-color: #1e3a5f !important; }
 `;
 
 /* ─── CONFIG ─────────────────────────────────────────────── */
@@ -93,16 +94,29 @@ export default function MainDashboard() {
       const matched = (masterData.objects || [])
         .filter(item => scannedRfids.includes(String(item.rfid_no).trim()))
         .map(item => ({
-          apiUrl:      item["@id"],
-          assetTagNo:  item.barcode_no,
-          rfidNo:      item.rfid_no,
-          assetNo:     item.asset_no,
-          modelNo:     item.model_no,
-          serialNo:    item.serial_no,
-          plant:       item.plant,
-          location:    item.location,
-          custodian:   item.custodian,
-          mfgYear:     item.mfg_year,
+          apiUrl:          item["@id"],
+          assetTagNo:      item.barcode_no,
+          rfidNo:          item.rfid_no,
+          assetNo:         item.asset_no,
+          assetCode:       item.asset_code,
+          assetClass:      item.asset_class,
+          assetDesc:       item.asset_desc,
+          modelNo:         item.model_no,
+          serialNo:        item.serial_no,
+          manufacturer:    item.manufacturer,
+          mfgYear:         item.mfg_year,
+          baseOfUnit:      item.base_of_unit,
+          quantity:        item.quantity,
+          plant:           item.plant,
+          location:        item.location,
+          custodian:       item.custodian,
+          companyCode:     item.company_code,
+          costCenter:      item.cost_center,
+          acquisVal:       item.acquis_val,
+          capitalizedOn:   item.capitalized_on,
+          life:            item.life,
+          internalOrderNo: item.internal_order_no,
+          eccIoNo:         item.ecc_io_no,
           verifiedDate: item.verified_status
             ? new Date(item.verified_status).toLocaleDateString("en-GB").replace(/\//g, ".")
             : "",
@@ -141,13 +155,31 @@ export default function MainDashboard() {
       formattedDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : selectedAsset.verifiedDate;
     }
     const payload = {
-      barcode_no: selectedAsset.assetTagNo, rfid_no: selectedAsset.rfidNo,
-      asset_no: selectedAsset.assetNo || "", model_no: selectedAsset.modelNo || "",
-      serial_no: selectedAsset.serialNo || "", plant: selectedAsset.plant,
-      location: selectedAsset.location || "", custodian: selectedAsset.custodian || "",
-      mfg_year: selectedAsset.mfgYear ? parseInt(selectedAsset.mfgYear) : null,
-      verified_status: formattedDate, asset_status: selectedAsset.assetStatus,
-      comments: selectedAsset.comments || ""
+      barcode_no:        selectedAsset.assetTagNo,
+      rfid_no:           selectedAsset.rfidNo,
+      asset_no:          selectedAsset.assetNo || "",
+      asset_code:        selectedAsset.assetCode || "",
+      asset_class:       selectedAsset.assetClass || "",
+      asset_desc:        selectedAsset.assetDesc || "",
+      model_no:          selectedAsset.modelNo || "",
+      serial_no:         selectedAsset.serialNo || "",
+      manufacturer:      selectedAsset.manufacturer || "",
+      mfg_year:          selectedAsset.mfgYear ? parseInt(selectedAsset.mfgYear) : null,
+      base_of_unit:      selectedAsset.baseOfUnit || "",
+      quantity:          selectedAsset.quantity ? parseFloat(selectedAsset.quantity) : null,
+      plant:             selectedAsset.plant,
+      location:          selectedAsset.location || "",
+      custodian:         selectedAsset.custodian || "",
+      company_code:      selectedAsset.companyCode || "",
+      cost_center:       selectedAsset.costCenter || "",
+      acquis_val:        selectedAsset.acquisVal || "",
+      capitalized_on:    selectedAsset.capitalizedOn || null,
+      life:              selectedAsset.life || "",
+      internal_order_no: selectedAsset.internalOrderNo || "",
+      ecc_io_no:         selectedAsset.eccIoNo || "",
+      verified_status:   formattedDate,
+      asset_status:      selectedAsset.assetStatus,
+      comments:          selectedAsset.comments || ""
     };
     setSaving(true);
     try {
@@ -178,11 +210,33 @@ export default function MainDashboard() {
       if (data.objects && data.objects.length > 0) {
         const item = data.objects[0];
         setSelectedAsset({
-          apiUrl: item["@id"], scanId: scan.scanId, assetTagNo: item.barcode_no,
-          rfidNo: item.rfid_no, assetNo: item.asset_no || "", modelNo: item.model_no || "",
-          serialNo: item.serial_no || "", plant: item.plant || "", location: item.location || "",
-          custodian: item.custodian || "", mfgYear: item.mfg_year || "", verifiedDate: vd,
-          assetStatus: item.asset_status || "Working", comments: item.comments || ""
+          apiUrl:          item["@id"],
+          scanId:          scan.scanId,
+          assetTagNo:      item.barcode_no,
+          rfidNo:          item.rfid_no,
+          assetNo:         item.asset_no || "",
+          assetCode:       item.asset_code || "",
+          assetClass:      item.asset_class || "",
+          assetDesc:       item.asset_desc || "",
+          modelNo:         item.model_no || "",
+          serialNo:        item.serial_no || "",
+          manufacturer:    item.manufacturer || "",
+          mfgYear:         item.mfg_year || "",
+          baseOfUnit:      item.base_of_unit || "",
+          quantity:        item.quantity || "",
+          plant:           item.plant || "",
+          location:        item.location || "",
+          custodian:       item.custodian || "",
+          companyCode:     item.company_code || "",
+          costCenter:      item.cost_center || "",
+          acquisVal:       item.acquis_val || "",
+          capitalizedOn:   item.capitalized_on || "",
+          life:            item.life || "",
+          internalOrderNo: item.internal_order_no || "",
+          eccIoNo:         item.ecc_io_no || "",
+          verifiedDate:    vd,
+          assetStatus:     item.asset_status || "Working",
+          comments:        item.comments || ""
         });
       } else {
         setNoMasterWarning("No master data found for scanned asset. Please enter details manually.");
@@ -226,7 +280,7 @@ export default function MainDashboard() {
     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
     backgroundRepeat: "no-repeat", backgroundPosition: "right 9px center"
   };
-  const pgBtn = { padding: "6px 12px", borderRadius: "8px", border: "1.5px solid #e2e8f0", background: "white", fontSize: "12px", fontWeight: "600", cursor: "pointer", fontFamily: "inherit" };
+  const pgBtn = { padding: "6px 12px", borderRadius: "8px", border: "1.5px solid #1e3a5f", background: "#1e3a5f", color: "white", fontSize: "12px", fontWeight: "600", cursor: "pointer", fontFamily: "inherit", transition: "all .18s" };
 
   /* ─── render ─── */
   return (
@@ -235,10 +289,10 @@ export default function MainDashboard() {
       <div style={{ minHeight: "100vh", background: "#f0f2f5", fontFamily: "'DM Sans','Segoe UI',sans-serif", position: "relative" }}>
 
         {/* ══ HEADER ══ */}
-        <div style={{ background: "linear-gradient(100deg,#0f172a 0%,#1e3a5f 55%,#0c4a6e 100%)", height: "60px", padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 4px 24px rgba(0,0,0,0.28)", position: "sticky", top: 0, zIndex: 100 }}>
+        <div style={{ background: "linear-gradient(100deg,#0f172a 0%,#1e3a5f 55%,#0c4a6e 100%)", padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 4px 24px rgba(0,0,0,0.28)", position: "sticky", top: 0, zIndex: 100 }}>
 
           {/* Left: Brand */}
-          <div style={{ display: "flex", alignItems: "center", gap: "13px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "13px", height: "60px" }}>
             <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: "11px", padding: "7px", display: "flex", border: "1px solid rgba(255,255,255,.08)" }}>
               <LayersIcon />
             </div>
@@ -248,8 +302,9 @@ export default function MainDashboard() {
             </div>
           </div>
 
-          {/* Right: Nav tabs + Scan button */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {/* Right: Nav tabs + Scan button — all in one row */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "60px" }}>
+
             {/* Nav tabs */}
             <div style={{ display: "flex", gap: "2px", background: "rgba(0,0,0,0.2)", borderRadius: "10px", padding: "3px" }}>
               {[
@@ -268,37 +323,14 @@ export default function MainDashboard() {
               ))}
             </div>
 
+
+
           </div>
         </div>
 
-        {/* ══ FLOATING SCAN BUTTON (bottom-right) ══ */}
-        <button className="scan-btn" onClick={() => setShowScanPanel(!showScanPanel)} style={{
-          position: "fixed", bottom: "28px", right: "28px", zIndex: 200,
-          background: scannedAssets.length
-            ? "linear-gradient(135deg,#ef4444,#dc2626)"
-            : "linear-gradient(135deg,#1e3a5f,#0c4a6e)",
-          border: "none",
-          borderRadius: "16px", padding: "13px 20px",
-          color: "white",
-          fontSize: "13px", fontWeight: "700", cursor: "pointer",
-          display: "flex", alignItems: "center", gap: "9px", fontFamily: "inherit",
-          boxShadow: scannedAssets.length
-            ? "0 8px 24px rgba(239,68,68,0.45), 0 2px 8px rgba(0,0,0,0.2)"
-            : "0 8px 24px rgba(15,23,42,0.35), 0 2px 8px rgba(0,0,0,0.15)",
-          transition: "all .2s"
-        }}>
-          <ScanIcon />
-          Scanned Assets
-          {scannedAssets.length > 0 && (
-            <span style={{ background: "rgba(255,255,255,0.25)", color: "white", borderRadius: "99px", fontSize: "11px", padding: "2px 9px", fontWeight: "800", animation: "pulseDot 2s infinite", minWidth: "22px", textAlign: "center", backdropFilter: "blur(4px)" }}>
-              {scannedAssets.length}
-            </span>
-          )}
-        </button>
-
-        {/* ══ SCAN PANEL ══ */}
+        {/* ══ SCAN PANEL — anchored below header, right-aligned ══ */}
         {showScanPanel && (
-          <div style={{ position: "fixed", right: "24px", bottom: "90px", width: "340px", background: "white", borderRadius: "16px", boxShadow: "0 16px 50px rgba(0,0,0,.18), 0 0 0 1px #e2e8f0", zIndex: 999, overflow: "hidden", animation: "slideDown .18s ease" }}>
+          <div style={{ position: "fixed", right: "26px", top: "128px", width: "340px", background: "white", borderRadius: "16px", boxShadow: "0 16px 50px rgba(0,0,0,.18), 0 0 0 1px #e2e8f0", zIndex: 999, overflow: "hidden", animation: "slideDown .18s ease" }}>
             <div style={{ padding: "14px 16px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(135deg,#f8f9ff,#fff)" }}>
               <div>
                 <div style={{ fontWeight: "800", fontSize: "13px", color: "#0f172a" }}>Newly Scanned Assets</div>
@@ -349,20 +381,55 @@ export default function MainDashboard() {
         <div style={{ padding: "22px 26px" }}>
 
           {/* Breadcrumb / page title */}
-          <div style={{ marginBottom: "20px", animation: "fadeUp .3s ease" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-              <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.7px" }}>
-                {activePage === "registry" ? "Asset Registry" : "Master Data"}
-              </span>
+          <div style={{ marginBottom: "20px", animation: "fadeUp .3s ease", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+            {/* Left: title block */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.7px" }}>
+                  {activePage === "registry" ? "Asset Registry" : "Master Data"}
+                </span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.5px" }}>
+                {activePage === "registry" ? "Verified Assets" : "Master Data Management"}
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "#64748b" }}>
+                {activePage === "registry"
+                  ? "Track and manage all RFID-tagged assets across plants"
+                  : "Manage asset master records — add, edit, and remove entries"}
+              </p>
             </div>
-            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.5px" }}>
-              {activePage === "registry" ? "Verified Assets" : "Master Data Management"}
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "#64748b" }}>
-              {activePage === "registry"
-                ? "Track and manage all RFID-tagged assets across plants"
-                : "Manage asset master records — add, edit, and remove entries"}
-            </p>
+
+            {/* Right: Scanned Assets button */}
+            <button
+              className="scan-btn-inline"
+              onClick={() => setShowScanPanel(!showScanPanel)}
+              style={{
+                flexShrink: 0,
+                display: "flex", alignItems: "center", gap: "8px",
+                padding: "9px 16px", borderRadius: "10px",
+                background: showScanPanel ? "#0f172a" : "#1e3a5f",
+                border: "1.5px solid #1e3a5f",
+                color: "white", fontSize: "12.5px", fontWeight: "700",
+                cursor: "pointer", fontFamily: "inherit", transition: "all .18s",
+                boxShadow: "0 2px 8px rgba(15,23,42,0.25)",
+              }}
+            >
+              <ScanIcon />
+              <span>Scanned Assets</span>
+              {scannedAssets.length > 0 && (
+                <span style={{
+                  background: "linear-gradient(135deg,#f97316,#ef4444)",
+                  color: "white", borderRadius: "99px", fontSize: "10px",
+                  padding: "1px 8px", fontWeight: "800",
+                  animation: "pulseDot 1.6s infinite",
+                  minWidth: "20px", textAlign: "center",
+                  boxShadow: "0 2px 6px rgba(239,68,68,0.55)",
+                  border: "1.5px solid rgba(255,255,255,0.25)"
+                }}>
+                  {scannedAssets.length}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* ── REGISTRY PAGE ── */}
