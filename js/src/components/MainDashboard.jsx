@@ -229,7 +229,7 @@ const ViewModal = ({ asset, onClose, onEdit }) => {
         {/* Body — sections */}
         <div style={{ overflowY: "auto", padding: "20px 22px", display: "flex", flexDirection: "column", gap: "14px" }}>
           {VIEW_SECTIONS.map(section => (
-            <div key={section.title} style={{ background: "white", borderRadius: "14px", border: `1px solid ${section.border}`, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
+            <div key={section.title} style={{ background: "white", borderRadius: "14px", border: `1px solid ${section.border}`, boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
               <div style={{ padding: "10px 16px", background: section.bg, borderBottom: `1px solid ${section.border}` }}>
                 <span style={{ fontSize: "12px", fontWeight: "800", color: section.color }}>{section.title}</span>
               </div>
@@ -298,18 +298,26 @@ export default function MainDashboard() {
 
   /* ─── fetchMatchedAssets — uses /internal/asset_it_master ─── */
   const fetchMatchedAssets = async () => {
-    try {
-      const scanData     = await api.get("/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 1");
-      const scannedRfids = (scanData.objects || []).map(s => String(s.rfid).trim());
-      if (scannedRfids.length === 0) { setAssets([]); return; }
+  try {
+    const scanData = await api.get("/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 1");
+    const scanObjects = scanData.objects || [];
 
-      const masterData = await api.get("/internal/asset_it_master");
-      const matched = (masterData.objects || [])
-        .filter(item => scannedRfids.includes(String(item.rfid_no).trim()));
+    if (scanObjects.length === 0) { setAssets([]); return; }
 
-      setAssets(matched);
-    } catch (err) { console.error("Match API Error:", err); }
-  };
+    const scannedRfids    = new Set(scanObjects.map(s => String(s.rfid || "").trim()).filter(Boolean));
+    const scannedBarcodes = new Set(scanObjects.map(s => String(s.barcode || "").trim()).filter(Boolean));
+
+    const masterData = await api.get("/internal/asset_it_master");
+    const matched = (masterData.objects || []).filter(item => {
+      const itemRfid    = String(item.rfid_no    || "").trim();
+      const itemBarcode = String(item.barcode_no || "").trim();
+      return (itemRfid    && scannedRfids.has(itemRfid)) ||
+             (itemBarcode && scannedBarcodes.has(itemBarcode));
+    });
+
+    setAssets(matched);
+  } catch (err) { console.error("Match API Error:", err); }
+};
 
   /* ─── poll unscanned badges ─── */
   React.useEffect(() => {
@@ -364,6 +372,17 @@ export default function MainDashboard() {
     setEditModal(true);
   };
 
+  // Add this helper above handleSaveEdit
+const toISODate = (val) => {
+  if (!val) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(val)) {
+    const [d, m, y] = val.split(".");
+    return `${y}-${m}-${d}`;
+  }
+  return null;
+};
+
   /* ─── handleSaveEdit ─── */
   const handleSaveEdit = async () => {
     if (!selectedAsset.assetTagNo?.trim()) { alert("Asset Tag No is mandatory"); return; }
@@ -389,85 +408,126 @@ export default function MainDashboard() {
       company_code:      selectedAsset.companyCode || "",
       cost_center:       selectedAsset.costCenter || "",
       acquis_val:        selectedAsset.acquisVal || "",
-      capitalized_on:    selectedAsset.capitalizedOn || null,
+      capitalized_on:  toISODate(selectedAsset.capitalizedOn),
       life:              selectedAsset.life || "",
       internal_order_no: selectedAsset.internalOrderNo || "",
       ecc_io_no:         selectedAsset.eccIoNo || "",
-      verified_status:   selectedAsset.verifiedDate || null,
+      verified_status: toISODate(selectedAsset.verifiedDate),
       asset_status:      selectedAsset.assetStatus,
       comments:          selectedAsset.comments || ""
     };
 
     setSaving(true);
+try {
+  if (selectedAsset.objectId) {
+    // UPDATE existing master record
+    await api.put(`/api/v1/collection/kln_asset_master/${selectedAsset.objectId}`, payload);
+  } else {
+      const created = await api.post("/internal/asset_it_master", payload);
+      console.log("POST raw response:", JSON.stringify(created));
+      if (created?.status === "error") {
+        alert("Create failed: " + created.message);
+        setSaving(false);
+        return;
+      }
+    }
+
+  // Mark scan as processed
+  if (selectedAsset.scanId) {
     try {
-      if (selectedAsset.objectId) {
-        await api.put(`/api/v1/collection/kln_asset_master/${selectedAsset.objectId}`, payload);
-      } else {
-        await api.post("/internal/asset_it_master", payload);
-      }
-      if (selectedAsset.scanId) {
-        await api.put(selectedAsset.scanId.replace(api.getBaseURL(), ""), { is_scanned: 1 });
-      }
-      setScannedAssets(prev => prev.filter(s => String(s.rfid).trim() !== String(selectedAsset.rfidNo).trim()));
-      setEditModal(false);
-      setSelectedAsset(null);
-      await fetchMatchedAssets();
-    } catch (err) {
-      alert("Save failed — check console for details.");
-      console.error("Save error:", err);
-    } finally { setSaving(false); }
-  };
+      const scanPath = selectedAsset.scanId.replace(/^https?:\/\/[^/]+/, "");
+      await api.put(scanPath, { is_scanned: 1 });
+      console.log("Scan marked as processed:", scanPath);
+    } catch (scanErr) {
+      console.error("Failed to mark scan:", scanErr);
+      // Don't block — asset was saved, just log the scan error
+    }
+  }
+
+  setScannedAssets(prev => prev.filter(s =>
+    String(s.rfid).trim()    !== String(selectedAsset.rfidNo).trim() &&
+    String(s.barcode).trim() !== String(selectedAsset.assetTagNo).trim()
+  ));
+  setEditModal(false);
+  setSelectedAsset(null);
+  setNoMasterWarning("");
+  await fetchMatchedAssets();
+} catch (err) {
+  alert("Save failed — check console for details.");
+  console.error("Save error:", err);
+} finally { setSaving(false); }
+};
 
   /* ─── openScanForEdit ─── */
   const openScanForEdit = async (scan) => {
-    try {
-      const data = await api.get(`/api/v1/collection/kln_asset_master?$filter=rfid_no eq '${scan.rfid}'`);
-      const vd = scan.dateTime ? new Date(scan.dateTime).toLocaleDateString("en-GB").replace(/\//g, ".") : "";
-      if (data.objects && data.objects.length > 0) {
-        const item = data.objects[0];
-        setSelectedAsset({
-          objectId:        item.cdb_object_id,
-          apiUrl:          item["@id"],
-          scanId:          scan.scanId,
-          assetTagNo:      item.barcode_no || "",
-          rfidNo:          item.rfid_no || "",
-          assetNo:         item.asset_no || "",
-          assetCode:       item.asset_code || "",
-          assetClass:      item.asset_class || "",
-          assetDesc:       item.asset_desc || "",
-          modelNo:         item.model_no || "",
-          serialNo:        item.serial_no || "",
-          manufacturer:    item.manufacturer || "",
-          mfgYear:         item.mfg_year || "",
-          baseOfUnit:      item.base_of_unit || "",
-          quantity:        item.quantity || "",
-          plant:           item.plant || "",
-          location:        item.location || "",
-          custodian:       item.custodian || "",
-          companyCode:     item.company_code || "",
-          costCenter:      item.cost_center || "",
-          acquisVal:       item.acquis_val || "",
-          capitalizedOn:   item.capitalized_on || "",
-          life:            item.life || "",
-          internalOrderNo: item.internal_order_no || "",
-          eccIoNo:         item.ecc_io_no || "",
-          verifiedDate:    vd,
-          assetStatus:     item.asset_status || "Working",
-          comments:        item.comments || ""
-        });
-      } else {
-        setNoMasterWarning("No master data found for scanned asset. Please enter details manually.");
+  try {
+    const vd = scan.dateTime ? new Date(scan.dateTime).toLocaleDateString("en-GB").replace(/\//g, ".") : "";
+
+    // First try matching by RFID
+    let item = null;
+    if (scan.rfid) {
+      const rfidData = await api.get(`/api/v1/collection/kln_asset_master?$filter=rfid_no eq '${scan.rfid}'`);
+      if (rfidData.objects && rfidData.objects.length > 0) {
+        item = rfidData.objects[0];
+      }
+    }
+
+    // Fallback: match by barcode_no if no RFID match
+    if (!item && scan.barcode) {
+      const barcodeData = await api.get(`/api/v1/collection/kln_asset_master?$filter=barcode_no eq '${scan.barcode}'`);
+      if (barcodeData.objects && barcodeData.objects.length > 0) {
+        item = barcodeData.objects[0];
+      }
+    }
+
+    if (item) {
+      setSelectedAsset({
+        objectId:        item.cdb_object_id,
+        apiUrl:          item["@id"],
+        scanId:          scan.scanId,
+        assetTagNo:      item.barcode_no || "",
+        rfidNo:          item.rfid_no || "",
+        assetNo:         item.asset_no || "",
+        assetCode:       item.asset_code || "",
+        assetClass:      item.asset_class || "",
+        assetDesc:       item.asset_desc || "",
+        modelNo:         item.model_no || "",
+        serialNo:        item.serial_no || "",
+        manufacturer:    item.manufacturer || "",
+        mfgYear:         item.mfg_year || "",
+        baseOfUnit:      item.base_of_unit || "",
+        quantity:        item.quantity || "",
+        plant:           item.plant || "",
+        location:        item.location || "",
+        custodian:       item.custodian || "",
+        companyCode:     item.company_code || "",
+        costCenter:      item.cost_center || "",
+        acquisVal:       item.acquis_val || "",
+        capitalizedOn:   item.capitalized_on || "",
+        life:            item.life || "",
+        internalOrderNo: item.internal_order_no || "",
+        eccIoNo:         item.ecc_io_no || "",
+        verifiedDate:    vd,
+        assetStatus:     item.asset_status || "Working",
+        comments:        item.comments || ""
+      });
+    } else {
+      setNoMasterWarning("No master data found for scanned asset. Please enter details manually.");
         setSelectedAsset({
           objectId: null, apiUrl: null, scanId: scan.scanId,
           assetTagNo: scan.barcode || "", rfidNo: scan.rfid || "",
-          assetNo: "", modelNo: "", serialNo: "", plant: "", location: "",
-          custodian: "", mfgYear: "", verifiedDate: vd, assetStatus: "Working", comments: ""
+          assetNo: "", assetCode: "", assetClass: "", assetDesc: "",
+          modelNo: "", serialNo: "", manufacturer: "", mfgYear: "",
+          baseOfUnit: "", quantity: "", plant: "", location: "",
+          custodian: "", companyCode: "", costCenter: "", acquisVal: "",
+          capitalizedOn: "", life: "", internalOrderNo: "", eccIoNo: "",
+          verifiedDate: vd, assetStatus: "Working", comments: ""
         });
-      }
-      setEditModal(true);
-      setShowScanPanel(false);
-    } catch (err) { console.error("Master fetch error:", err); }
-  };
+    }
+    setEditModal(true);
+    setShowScanPanel(false);
+  } catch (err) { console.error("Master fetch error:", err); }
+};
 
   /* ─── Computed ─── */
   const plants = ["All", ...Array.from(new Set(assets.map(a => a.plant).filter(Boolean)))];

@@ -41,7 +41,8 @@ export default function EditModal({
   onSave,
   onChange,
   saving,
-  allowRfidEdit = false
+  allowRfidEdit = false,
+  allowBarcodeEdit = false
 }) {
   return (
     <div
@@ -111,7 +112,7 @@ export default function EditModal({
 
             {/* ── Section 1: Core Identity ── */}
             <SectionHeader label="Asset Identity" color="#6366f1" />
-            <FormField label="Asset Tag No." value={asset.assetTagNo} required onChange={e => onChange({ ...asset, assetTagNo: e.target.value })} />
+            <FormField label="Asset Tag No." value={asset.assetTagNo} required disabled={!allowBarcodeEdit} onChange={e => onChange({ ...asset, assetTagNo: e.target.value })} />
             <FormField label="RFID No." value={asset.rfidNo} disabled={!allowRfidEdit} onChange={e => onChange({ ...asset, rfidNo: e.target.value })} />
             <FormField label="Asset No." value={asset.assetNo} onChange={e => onChange({ ...asset, assetNo: e.target.value })} />
             <FormField label="Asset Code" value={asset.assetCode} onChange={e => onChange({ ...asset, assetCode: e.target.value })} />

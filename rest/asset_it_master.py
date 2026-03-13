@@ -10,6 +10,17 @@ class AssetMasterAPI(JsonAPI):
 def _mount_app():
     return AssetMasterAPI()
 
+# ── standalone helper (outside class) ──
+def _parse_date(val):
+    if not val or str(val).strip() in ("null", "None", ""):
+        return None
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(str(val).strip(), fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return None
+
 class AssetMasterData:
 
     def get_all(self, plant=None):
@@ -40,7 +51,6 @@ class AssetMasterData:
                 row = {}
                 for col in rec.keys():
                     val = rec[col]
-                    # Convert datetime/date to string so JSON can serialize it
                     if hasattr(val, 'strftime'):
                         val = val.strftime("%Y-%m-%d")
                     row[col] = val
@@ -55,22 +65,14 @@ class AssetMasterData:
         try:
             object_id = misc.UUID(create=True)
 
-            verified = data.get("verified_status")
-            if verified:
-                try:
-                    verified = datetime.strptime(verified, "%Y-%m-%d").strftime("%Y-%m-%d")
-                except ValueError:
-                    verified = None
+            verified       = _parse_date(data.get("verified_status"))
+            capitalized_on = _parse_date(data.get("capitalized_on"))
 
-            capitalized_on = data.get("capitalized_on")
-            if capitalized_on:
-                try:
-                    capitalized_on = datetime.strptime(capitalized_on, "%Y-%m-%d").strftime("%Y-%m-%d")
-                except ValueError:
-                    capitalized_on = None
+            mfg_year = int(data.get("mfg_year") or 0) if data.get("mfg_year") not in (None, "", "null") else 0
+            quantity  = float(data.get("quantity") or 0.0) if data.get("quantity") not in (None, "", "null") else 0.0
 
-            mfg_year = int(data.get("mfg_year") or 0)
-            quantity = float(data.get("quantity") or 0.0)
+            cap_val = ("'%s'" % capitalized_on) if capitalized_on else "NULL"
+            ver_val = ("'%s'" % verified)        if verified        else "NULL"
 
             sqlapi.SQLexecute("""
                 INSERT INTO kln_asset_master
@@ -94,9 +96,9 @@ class AssetMasterData:
                     %d,'%s',%f,
                     '%s','%s','%s',
                     '%s','%s',
-                    '%s','%s','%s',
+                    '%s',%s,'%s',
                     '%s','%s',
-                    '%s','%s','%s'
+                    %s,'%s','%s'
                 )
             """ % (
                 object_id,
@@ -118,11 +120,11 @@ class AssetMasterData:
                 data.get("company_code") or "",
                 data.get("cost_center") or "",
                 data.get("acquis_val") or "",
-                capitalized_on or "",
+                cap_val,
                 data.get("life") or "",
                 data.get("internal_order_no") or "",
                 data.get("ecc_io_no") or "",
-                verified or "",
+                ver_val,
                 data.get("asset_status") or "",
                 data.get("comments") or ""
             ))

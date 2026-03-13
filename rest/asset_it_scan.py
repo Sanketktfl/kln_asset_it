@@ -13,20 +13,39 @@ def _mount_app():
 class AssetItScanData:
     def create_item(self, data):
         try:
-            barcode = data.get("barcode")
-            rfid = data.get("rfid")
+            barcode = data.get("barcode", "").strip() if data.get("barcode") else ""
+            rfid = data.get("rfid", "").strip() if data.get("rfid") else ""
             plant_code = data.get("plant_code")
             department = data.get("department")
             date_time = data.get("date_time")
-            if not rfid:
-                return {
-                    "status": "error",
-                    "message": "RFID is required"
-                }
+
+            # ── Require at least one of rfid or barcode ──────────
+            if not rfid and not barcode:
+                return {"status": "error", "message": "At least one of RFID or Barcode is required"}
+
             if date_time:
                 date_time = datetime.strptime(date_time, "%Y-%m-%d").strftime("%Y-%m-%d")
 
-            # generate object id
+            # ── Duplicate check — independent per field ──
+            if rfid:
+                rfid_check = sqlapi.RecordSet2(sql="""
+                    SELECT cdb_object_id FROM kln_asset_scan
+                    WHERE rfid = '%s'
+                """ % rfid)
+                if list(rfid_check):
+                    return {"status": "error",
+                            "message": "A record with this RFID already exists in the scan table."}
+
+            if barcode:
+                barcode_check = sqlapi.RecordSet2(sql="""
+                    SELECT cdb_object_id FROM kln_asset_scan
+                    WHERE barcode = '%s'
+                """ % barcode)
+                if list(barcode_check):
+                    return {"status": "error",
+                            "message": "A record with this Barcode already exists in the scan table."}
+
+
             object_id = misc.UUID(create=True)
 
             sqlapi.SQLexecute("""
@@ -59,16 +78,10 @@ class AssetItScanData:
                 date_time
             ))
 
-            return {
-                "status": "success",
-                "message": "Inserted successfully"
-            }
+            return {"status": "success", "message": "Inserted successfully"}
 
         except Exception as e:
-            return {
-                "status": "error",
-                "message": "RFID already scanned. Please scan another asset."
-            }
+            return {"status": "error", "message": str(e)}
 
 @AssetItScanAPI.path(model=AssetItScanData, path="")
 def _path():
