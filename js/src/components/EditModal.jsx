@@ -115,8 +115,8 @@ export default function EditModal({
             <FormField label="Asset Tag No." value={asset.assetTagNo} required disabled={!allowBarcodeEdit} onChange={e => onChange({ ...asset, assetTagNo: e.target.value })} />
             <FormField label="RFID No." value={asset.rfidNo} disabled={!allowRfidEdit} onChange={e => onChange({ ...asset, rfidNo: e.target.value })} />
             <FormField label="Asset No." value={asset.assetNo} onChange={e => onChange({ ...asset, assetNo: e.target.value })} />
-            <FormField label="Asset Code" value={asset.assetCode} onChange={e => onChange({ ...asset, assetCode: e.target.value })} />
-            <FormField label="Asset Class" value={asset.assetClass} onChange={e => onChange({ ...asset, assetClass: e.target.value })} />
+            <FormField label="Asset Code" value={asset.assetCode} disabled onChange={e => onChange({ ...asset, assetCode: e.target.value })} />
+            <FormField label="Asset Class" value={asset.assetClass} disabled onChange={e => onChange({ ...asset, assetClass: e.target.value })} />
             <FormField label="Asset Description" value={asset.assetDesc} span onChange={e => onChange({ ...asset, assetDesc: e.target.value })} />
 
             {/* ── Section 2: Physical Details ── */}
@@ -144,9 +144,9 @@ export default function EditModal({
 
             {/* ── Section 4: Financial & Lifecycle ── */}
             <SectionHeader label="Financial & Lifecycle" color="#d97706" />
-            <FormField label="Acquisition Value" value={asset.acquisVal} onChange={e => onChange({ ...asset, acquisVal: e.target.value })} />
-            <FormField label="Capitalized On" value={asset.capitalizedOn} type="date" onChange={e => onChange({ ...asset, capitalizedOn: e.target.value })} />
-            <FormField label="Life" value={asset.life} onChange={e => onChange({ ...asset, life: e.target.value })} />
+            <FormField label="Acquisition Value" value={asset.acquisVal} disabled onChange={e => onChange({ ...asset, acquisVal: e.target.value })} />
+            <FormField label="Capitalized On" value={asset.capitalizedOn} disabled type="date" onChange={e => onChange({ ...asset, capitalizedOn: e.target.value })} />
+            <FormField label="Life" value={asset.life} disabled onChange={e => onChange({ ...asset, life: e.target.value })} />
             <FormField label="Internal Order No." value={asset.internalOrderNo} onChange={e => onChange({ ...asset, internalOrderNo: e.target.value })} />
             <FormField label="ECC IO No." value={asset.eccIoNo} onChange={e => onChange({ ...asset, eccIoNo: e.target.value })} />
 

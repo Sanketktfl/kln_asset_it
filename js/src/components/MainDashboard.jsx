@@ -297,23 +297,46 @@ export default function MainDashboard() {
   const [activePage, setActivePage]           = useState("registry");
 
   /* ─── fetchMatchedAssets — uses /internal/asset_it_master ─── */
-  const fetchMatchedAssets = async () => {
+const fetchMatchedAssets = async () => {
   try {
     const scanData = await api.get("/api/v1/collection/kln_asset_scan?$filter=is_scanned eq 1");
     const scanObjects = scanData.objects || [];
 
     if (scanObjects.length === 0) { setAssets([]); return; }
 
-    const scannedRfids    = new Set(scanObjects.map(s => String(s.rfid || "").trim()).filter(Boolean));
+    const scannedRfids    = new Set(scanObjects.map(s => String(s.rfid    || "").trim()).filter(Boolean));
     const scannedBarcodes = new Set(scanObjects.map(s => String(s.barcode || "").trim()).filter(Boolean));
 
     const masterData = await api.get("/internal/asset_it_master");
-    const matched = (masterData.objects || []).filter(item => {
-      const itemRfid    = String(item.rfid_no    || "").trim();
-      const itemBarcode = String(item.barcode_no || "").trim();
-      return (itemRfid    && scannedRfids.has(itemRfid)) ||
-             (itemBarcode && scannedBarcodes.has(itemBarcode));
-    });
+    const masterObjects = masterData.objects || [];
+
+    const matched = masterObjects
+      .map(item => {
+        const itemRfid    = String(item.rfid_no    || "").trim();
+        const itemBarcode = String(item.barcode_no || "").trim();
+
+        // Find the matching scan record for this master item
+        const matchedScan = scanObjects.find(s =>
+          (itemRfid    && String(s.rfid    || "").trim() === itemRfid) ||
+          (itemBarcode && String(s.barcode || "").trim() === itemBarcode)
+        );
+
+        if (!matchedScan) return null;
+
+        // Merge: scan fields take priority over master fields
+        return {
+          ...item,                                                          // all master fields as base
+          rfid_no:    String(matchedScan.rfid        || "").trim() || item.rfid_no    || "",
+          barcode_no: String(matchedScan.barcode     || "").trim() || item.barcode_no || "",
+          plant:      String(matchedScan.plant_code  || "").trim() || item.plant      || "",
+          department: String(matchedScan.department  || "").trim() || item.department || "",
+          location:   String(matchedScan.location    || "").trim() || item.location   || "",
+          // keep scan metadata for edit/save flow
+          _scanId:    matchedScan["@id"],
+          _scanDateTime: matchedScan.date_time,
+        };
+      })
+      .filter(Boolean);
 
     setAssets(matched);
   } catch (err) { console.error("Match API Error:", err); }
